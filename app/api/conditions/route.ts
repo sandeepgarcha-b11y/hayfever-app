@@ -123,7 +123,7 @@ export async function GET(req: NextRequest) {
     };
 
     return NextResponse.json(response, {
-      headers: { "Cache-Control": "public, max-age=900, stale-while-revalidate=300" },
+      headers: { "Cache-Control": "private, max-age=600" },
     });
   } catch (err) {
     console.error("Conditions API error:", err);
