@@ -25,15 +25,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [weatherRes, pollenRes, geoRes] = await Promise.all([
+    // Fetch weather and geocoding in parallel; pollen handled separately so its
+    // failure doesn't take down the whole response.
+    const [weatherRes, geoRes] = await Promise.all([
       fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latNum}&longitude=${lonNum}` +
           `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index,precipitation_probability,is_day` +
-          `&timezone=auto`
-      ),
-      fetch(
-        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latNum}&longitude=${lonNum}` +
-          `&current=grass_pollen,tree_pollen,weed_pollen` +
           `&timezone=auto`
       ),
       fetch(
@@ -43,38 +40,62 @@ export async function GET(req: NextRequest) {
     ]);
 
     if (!weatherRes.ok) {
+      const body = await weatherRes.text();
+      console.error(`Weather API error ${weatherRes.status}:`, body);
       throw new Error(`Weather API error: ${weatherRes.status}`);
-    }
-    if (!pollenRes.ok) {
-      throw new Error(`Pollen API error: ${pollenRes.status}`);
     }
 
     const weatherJson = await weatherRes.json();
-    const pollenJson = await pollenRes.json();
-    const geoJson = geoRes.ok ? await geoRes.json() : null;
-
     const c = weatherJson.current;
+
+    if (!c) {
+      console.error("Weather API returned no current data:", JSON.stringify(weatherJson));
+      throw new Error("Weather API returned no current data");
+    }
+
     const weather: WeatherData = {
-      temperature: Math.round(c.temperature_2m),
-      feelsLike: Math.round(c.apparent_temperature),
+      temperature: Math.round(c.temperature_2m ?? 0),
+      feelsLike: Math.round(c.apparent_temperature ?? 0),
       uvIndex: Math.round(c.uv_index ?? 0),
-      windSpeed: Math.round(c.wind_speed_10m),
-      windDirection: c.wind_direction_10m,
+      windSpeed: Math.round(c.wind_speed_10m ?? 0),
+      windDirection: c.wind_direction_10m ?? 0,
       precipitationProbability: c.precipitation_probability ?? 0,
-      weatherCode: c.weather_code,
-      isDay: c.is_day,
+      weatherCode: c.weather_code ?? 0,
+      isDay: c.is_day ?? 1,
     };
 
-    const p = pollenJson.current;
-    const pollen: PollenData = {
-      grassPollen: p.grass_pollen ?? null,
-      treePollen: p.tree_pollen ?? null,
-      weedPollen: p.weed_pollen ?? null,
-    };
+    // Pollen is best-effort — if the API is unavailable for a region, fall back to nulls
+    let pollen: PollenData = { grassPollen: null, treePollen: null, weedPollen: null };
+    try {
+      const pollenRes = await fetch(
+        `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latNum}&longitude=${lonNum}` +
+          `&current=grass_pollen,tree_pollen,weed_pollen` +
+          `&timezone=auto`
+      );
+      if (pollenRes.ok) {
+        const pollenJson = await pollenRes.json();
+        const p = pollenJson.current;
+        if (p) {
+          pollen = {
+            grassPollen: p.grass_pollen ?? null,
+            treePollen: p.tree_pollen ?? null,
+            weedPollen: p.weed_pollen ?? null,
+          };
+        } else {
+          console.warn("Pollen API returned no current data — using nulls");
+        }
+      } else {
+        const body = await pollenRes.text();
+        console.warn(`Pollen API ${pollenRes.status} — using nulls:`, body);
+      }
+    } catch (pollenErr) {
+      console.warn("Pollen API fetch failed — using nulls:", pollenErr);
+    }
 
     const recommendation = buildRecommendation(weather, pollen);
 
     // Build a readable location name from reverse geocoding
+    const geoJson = geoRes.ok ? await geoRes.json().catch(() => null) : null;
     let locationName = `${latNum.toFixed(2)}, ${lonNum.toFixed(2)}`;
     if (geoJson?.address) {
       const a = geoJson.address;

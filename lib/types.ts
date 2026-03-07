@@ -34,4 +34,5 @@ export interface ConditionsResponse {
   recommendation: Recommendation;
   locationName: string;
   fetchedAt: string;
+  usingFallbackLocation?: boolean;
 }

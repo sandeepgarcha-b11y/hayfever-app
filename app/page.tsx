@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, RefreshCw } from "lucide-react";
+import { MapPin, RefreshCw, MapPinOff } from "lucide-react";
 import LocationGate from "@/components/LocationGate";
 import WeatherCard from "@/components/WeatherCard";
 import PollenCard from "@/components/PollenCard";
@@ -92,6 +92,17 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {/* Fallback location notice */}
+        {data.usingFallbackLocation && (
+          <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-6">
+            <MapPinOff className="w-4 h-4 flex-shrink-0" />
+            <span>
+              Couldn&apos;t access your location — showing conditions for{" "}
+              <strong className="font-medium">Ealing, London</strong> instead.
+            </span>
+          </div>
+        )}
 
         {/* Cards */}
         <div className="space-y-4">
