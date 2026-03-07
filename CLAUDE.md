@@ -29,6 +29,20 @@ If a change is non-obvious, include a short commit body summarizing intent and k
 - If the repo/remote/branch isn't set up yet, handle setup in the least disruptive way.
 - If pushing is unsafe or impossible (no remote, auth issues), explain what you need and propose the next best action.
 
+## Deployment
+This app is deployed on Vercel at **https://hayfever-app.vercel.app**.
+
+After pushing to `origin/main`, redeploy to production with:
+```bash
+npx vercel --prod
+```
+
+Run this after every push that contains meaningful changes. When you deploy, tell me:
+- the deployment URL
+- whether the build passed or failed
+
+Note: GitHub auto-deploy is not yet connected. Until it is, deployment must be triggered manually with the command above.
+
 ## Guardrails
 - Do not commit secrets (keys, tokens, credentials, .env files with real values).
 - Avoid committing build artifacts, large binaries, or machine-specific files unless explicitly requested.
