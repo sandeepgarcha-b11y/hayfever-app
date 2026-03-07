@@ -67,19 +67,26 @@ export async function GET(req: NextRequest) {
     // Pollen is best-effort — if the API is unavailable for a region, fall back to nulls
     let pollen: PollenData = { grassPollen: null, treePollen: null, weedPollen: null };
     try {
+      // Open-Meteo uses species-level pollen variables, not aggregated tree/weed.
+      // We fetch all species and aggregate into grass / tree / weed for display.
       const pollenRes = await fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latNum}&longitude=${lonNum}` +
-          `&current=grass_pollen,tree_pollen,weed_pollen` +
+          `&current=grass_pollen,alder_pollen,birch_pollen,olive_pollen,mugwort_pollen,ragweed_pollen` +
           `&timezone=auto`
       );
       if (pollenRes.ok) {
         const pollenJson = await pollenRes.json();
         const p = pollenJson.current;
         if (p) {
+          // Use the highest reading within each category as the representative value
+          const maxOf = (...vals: (number | null | undefined)[]): number | null => {
+            const nums = vals.filter((v): v is number => v != null && !isNaN(v));
+            return nums.length ? Math.max(...nums) : null;
+          };
           pollen = {
             grassPollen: p.grass_pollen ?? null,
-            treePollen: p.tree_pollen ?? null,
-            weedPollen: p.weed_pollen ?? null,
+            treePollen: maxOf(p.alder_pollen, p.birch_pollen, p.olive_pollen),
+            weedPollen: maxOf(p.mugwort_pollen, p.ragweed_pollen),
           };
         } else {
           console.warn("Pollen API returned no current data — using nulls");
