@@ -36,14 +36,12 @@ export default function LocationGate({ onData }: Props) {
         onData(data);
         setState({ status: "done" });
       } catch (err) {
-        // If the primary fetch failed and we haven't tried fallback yet, load fallback
         if (!isFallback) {
           fetchConditions(FALLBACK.lat, FALLBACK.lon, true);
         } else {
           setState({
             status: "error",
-            message:
-              err instanceof Error ? err.message : "Failed to load conditions",
+            message: err instanceof Error ? err.message : "Failed to load conditions",
           });
         }
       }
@@ -53,7 +51,6 @@ export default function LocationGate({ onData }: Props) {
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      // No geolocation support — go straight to fallback
       fetchConditions(FALLBACK.lat, FALLBACK.lon, true);
       return;
     }
@@ -61,14 +58,12 @@ export default function LocationGate({ onData }: Props) {
     navigator.geolocation.getCurrentPosition(
       (pos) => fetchConditions(pos.coords.latitude, pos.coords.longitude, false),
       () => {
-        // Any geolocation error (denied, unavailable, timeout) → use fallback
         fetchConditions(FALLBACK.lat, FALLBACK.lon, true);
       },
       { timeout: 10000, maximumAge: 300000 }
     );
   }, [fetchConditions]);
 
-  // Auto-request on mount
   useEffect(() => {
     requestLocation();
   }, [requestLocation]);
@@ -81,20 +76,20 @@ export default function LocationGate({ onData }: Props) {
     state.status === "fallback-fetching";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50">
+    <div className="min-h-screen flex items-center justify-center bg-cream-200">
       <div className="max-w-sm w-full mx-4 text-center">
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-sage-100 mb-5">
             {isLoading ? (
-              <Loader2 className="w-9 h-9 text-green-700 animate-spin" />
+              <Loader2 className="w-9 h-9 text-sage-600 animate-spin" />
             ) : state.status === "error" ? (
-              <AlertTriangle className="w-9 h-9 text-amber-600" />
+              <AlertTriangle className="w-9 h-9 text-clay-500" />
             ) : (
-              <MapPin className="w-9 h-9 text-green-700" />
+              <MapPin className="w-9 h-9 text-sage-600" />
             )}
           </div>
 
-          <h1 className="text-2xl font-semibold text-stone-800 mb-2">
+          <h1 className="text-2xl font-semibold text-charcoal-800 mb-2">
             {state.status === "requesting" && "Finding your location…"}
             {state.status === "fetching" && "Loading conditions…"}
             {state.status === "fallback-fetching" && "Loading conditions…"}
@@ -102,7 +97,7 @@ export default function LocationGate({ onData }: Props) {
             {state.status === "idle" && "Hayfever Dashboard"}
           </h1>
 
-          <p className="text-stone-500 text-sm leading-relaxed">
+          <p className="text-charcoal-500 text-sm leading-relaxed">
             {state.status === "requesting" &&
               "Please allow location access in your browser."}
             {state.status === "fetching" &&
@@ -110,7 +105,7 @@ export default function LocationGate({ onData }: Props) {
             {state.status === "fallback-fetching" && (
               <>
                 Couldn&apos;t access your location.{" "}
-                <span className="text-stone-400">
+                <span className="text-charcoal-400">
                   Loading data for {FALLBACK.label} instead.
                 </span>
               </>
@@ -126,7 +121,7 @@ export default function LocationGate({ onData }: Props) {
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={requestLocation}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-green-700 text-white font-medium hover:bg-green-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sage-600 text-white font-medium hover:bg-sage-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
             >
               <MapPin className="w-4 h-4" />
               {state.status === "error" ? "Try again" : "Use my location"}
@@ -134,7 +129,7 @@ export default function LocationGate({ onData }: Props) {
             {state.status === "error" && (
               <button
                 onClick={() => fetchConditions(FALLBACK.lat, FALLBACK.lon, true)}
-                className="text-sm text-stone-400 hover:text-stone-600 underline transition-colors"
+                className="text-sm text-charcoal-400 hover:text-charcoal-600 underline transition-colors"
               >
                 Use {FALLBACK.label} instead
               </button>

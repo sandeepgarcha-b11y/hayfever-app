@@ -6,12 +6,15 @@ interface Props {
   pollen: PollenData;
 }
 
-const levelConfig: Record<PollenLevel, { bg: string; text: string; bar: string; width: string }> = {
-  None:       { bg: "bg-stone-100",   text: "text-stone-500",  bar: "bg-stone-300",  width: "w-0"    },
-  Low:        { bg: "bg-green-100",   text: "text-green-700",  bar: "bg-green-500",  width: "w-1/4"  },
-  Moderate:   { bg: "bg-yellow-100",  text: "text-yellow-700", bar: "bg-yellow-400", width: "w-2/4"  },
-  High:       { bg: "bg-orange-100",  text: "text-orange-700", bar: "bg-orange-500", width: "w-3/4"  },
-  "Very High":{ bg: "bg-red-100",     text: "text-red-700",    bar: "bg-red-500",    width: "w-full" },
+const levelConfig: Record<
+  PollenLevel,
+  { bg: string; text: string; bar: string; width: string }
+> = {
+  None:        { bg: "bg-cream-300",   text: "text-charcoal-400", bar: "bg-charcoal-200", width: "w-0"    },
+  Low:         { bg: "bg-sage-100",    text: "text-sage-700",     bar: "bg-sage-300",     width: "w-1/4"  },
+  Moderate:    { bg: "bg-clay-100",    text: "text-clay-700",     bar: "bg-clay-300",     width: "w-2/4"  },
+  High:        { bg: "bg-clay-200",    text: "text-clay-800",     bar: "bg-clay-500",     width: "w-3/4"  },
+  "Very High": { bg: "bg-clay-300",    text: "text-clay-900",     bar: "bg-clay-700",     width: "w-full" },
 };
 
 function PollenRow({ label, value }: { label: string; value: number | null }) {
@@ -21,17 +24,19 @@ function PollenRow({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-stone-600 font-medium">{label}</span>
+        <span className="text-sm text-charcoal-600 font-medium">{label}</span>
         <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${config.bg} ${config.text}`}
+          className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${config.bg} ${config.text}`}
         >
           {level}
           {value !== null && value > 0 && (
-            <span className="ml-1 font-normal opacity-70">({Math.round(value)})</span>
+            <span className="ml-1 font-normal opacity-60">
+              ({Math.round(value)})
+            </span>
           )}
         </span>
       </div>
-      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-cream-300 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${config.bar} ${config.width}`}
         />
@@ -57,25 +62,23 @@ export default function PollenCard({ pollen }: Props) {
   const config = levelConfig[overall];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+    <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 p-6">
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wide mb-1">
+          <h2 className="text-xs font-semibold text-charcoal-400 uppercase tracking-widest mb-2">
             Pollen
           </h2>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-semibold text-stone-800">
-              Overall:{" "}
-            </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg font-semibold text-charcoal-800">Overall</span>
             <span
-              className={`text-sm font-semibold px-3 py-1 rounded-full ${config.bg} ${config.text}`}
+              className={`text-xs font-semibold px-3 py-1 rounded-full ${config.bg} ${config.text}`}
             >
               {overall}
             </span>
           </div>
         </div>
         <div className={`p-2 rounded-xl ${config.bg}`}>
-          <Leaf className={`w-6 h-6 ${config.text}`} />
+          <Leaf className={`w-5 h-5 ${config.text}`} />
         </div>
       </div>
 
@@ -85,7 +88,7 @@ export default function PollenCard({ pollen }: Props) {
         <PollenRow label="Weed pollen" value={pollen.weedPollen} />
       </div>
 
-      <p className="text-xs text-stone-400 mt-4">
+      <p className="text-xs text-charcoal-300 mt-5">
         Pollen index sourced from Open-Meteo air quality data
       </p>
     </div>

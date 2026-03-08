@@ -1,13 +1,4 @@
-import {
-  Sun,
-  CloudRain,
-  Cloud,
-  CloudSnow,
-  Wind,
-  Droplets,
-  Thermometer,
-  Zap,
-} from "lucide-react";
+import { Sun, CloudRain, Cloud, CloudSnow, Wind, Droplets, Thermometer, Zap } from "lucide-react";
 import type { WeatherData } from "@/lib/types";
 import { getWeatherDescription } from "@/lib/recommendations";
 
@@ -30,37 +21,36 @@ function compassDirection(deg: number): string {
 }
 
 function uvLabel(uv: number): { label: string; colour: string } {
-  if (uv <= 2) return { label: "Low", colour: "text-green-700" };
-  if (uv <= 5) return { label: "Moderate", colour: "text-yellow-600" };
-  if (uv <= 7) return { label: "High", colour: "text-orange-600" };
-  if (uv <= 10) return { label: "Very High", colour: "text-red-600" };
-  return { label: "Extreme", colour: "text-purple-700" };
+  if (uv <= 2) return { label: "Low", colour: "text-sage-600" };
+  if (uv <= 5) return { label: "Moderate", colour: "text-clay-500" };
+  if (uv <= 7) return { label: "High", colour: "text-clay-600" };
+  if (uv <= 10) return { label: "Very High", colour: "text-clay-700" };
+  return { label: "Extreme", colour: "text-clay-800" };
 }
 
 export default function WeatherCard({ weather }: Props) {
   const uv = uvLabel(weather.uvIndex);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+    <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wide mb-1">
+          <h2 className="text-xs font-semibold text-charcoal-400 uppercase tracking-widest mb-1">
             Weather
           </h2>
-          <p className="text-stone-600 text-sm">{getWeatherDescription(weather.weatherCode)}</p>
+          <p className="text-charcoal-500 text-sm">{getWeatherDescription(weather.weatherCode)}</p>
         </div>
         <WeatherIcon
           code={weather.weatherCode}
-          isDay={weather.isDay}
-          className="w-10 h-10 text-amber-500"
+          className="w-9 h-9 text-clay-400"
         />
       </div>
 
       {/* Big temperature */}
       <div className="mb-6">
-        <span className="text-6xl font-light text-stone-800">{weather.temperature}°</span>
-        <span className="text-stone-400 text-lg ml-1">C</span>
-        <p className="text-stone-500 text-sm mt-1">
+        <span className="text-6xl font-light text-charcoal-800">{weather.temperature}°</span>
+        <span className="text-charcoal-400 text-lg ml-1">C</span>
+        <p className="text-charcoal-400 text-sm mt-1">
           Feels like {weather.feelsLike}°C
         </p>
       </div>
@@ -68,17 +58,17 @@ export default function WeatherCard({ weather }: Props) {
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         <Stat
-          icon={<Droplets className="w-4 h-4 text-blue-500" />}
+          icon={<Droplets className="w-4 h-4 text-sage-400" />}
           label="Rain chance"
           value={`${weather.precipitationProbability}%`}
         />
         <Stat
-          icon={<Wind className="w-4 h-4 text-stone-400" />}
+          icon={<Wind className="w-4 h-4 text-charcoal-300" />}
           label="Wind"
           value={`${weather.windSpeed} km/h ${compassDirection(weather.windDirection)}`}
         />
         <Stat
-          icon={<Sun className="w-4 h-4 text-amber-500" />}
+          icon={<Sun className="w-4 h-4 text-clay-400" />}
           label="UV Index"
           value={
             <span>
@@ -88,7 +78,7 @@ export default function WeatherCard({ weather }: Props) {
           }
         />
         <Stat
-          icon={<Thermometer className="w-4 h-4 text-rose-400" />}
+          icon={<Thermometer className="w-4 h-4 text-clay-300" />}
           label="Feels like"
           value={`${weather.feelsLike}°C`}
         />
@@ -107,11 +97,11 @@ function Stat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 bg-stone-50 rounded-xl px-3 py-2.5">
+    <div className="flex items-center gap-2 bg-cream-200 rounded-xl px-3 py-2.5">
       {icon}
       <div className="min-w-0">
-        <p className="text-xs text-stone-400">{label}</p>
-        <p className="text-sm font-medium text-stone-700 truncate">{value}</p>
+        <p className="text-xs text-charcoal-400">{label}</p>
+        <p className="text-sm font-medium text-charcoal-700 truncate">{value}</p>
       </div>
     </div>
   );
