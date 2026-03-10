@@ -36,7 +36,7 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
       <div className="absolute inset-0 bg-charcoal-900/50 backdrop-blur-sm" aria-hidden="true" />
 
       {/* Card */}
-      <div className="relative w-full max-w-sm bg-[var(--card)] rounded-2xl shadow-xl border border-cream-400 dark:border-charcoal-600 p-7">
+      <div className="modal-enter relative w-full max-w-sm bg-[var(--card)] rounded-2xl shadow-xl border border-cream-400 dark:border-charcoal-600 p-7">
         {/* Icon + heading */}
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 rounded-xl bg-sage-100 dark:bg-sage-900">
@@ -90,7 +90,7 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
           onClick={() => onSave({ grass: true, tree: true, weed: true })}
           className="w-full mt-3 text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 transition-colors"
         >
-          Skip — assume all affect me
+          Use defaults (all pollen)
         </button>
       </div>
     </div>

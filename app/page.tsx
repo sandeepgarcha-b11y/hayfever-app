@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { MapPin, MapPinOff, RefreshCw, Sun, Moon, SlidersHorizontal } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { MapPin, MapPinOff, RefreshCw, Sun, Moon, SlidersHorizontal, Leaf } from "lucide-react";
 import LocationGate from "@/components/LocationGate";
 import WeatherCard from "@/components/WeatherCard";
 import PollenCard from "@/components/PollenCard";
@@ -12,8 +12,17 @@ import AllergyProfileSetup from "@/components/AllergyProfileSetup";
 import { buildRecommendation, getPollenLevel, getPollenLevelIndex } from "@/lib/recommendations";
 import type { ConditionsResponse, AllergyProfile } from "@/lib/types";
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function relativeTime(iso: string): { label: string; stale: boolean } {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  const stale = diffMin >= 120;
+
+  if (diffMin < 2) return { label: "Just updated", stale };
+  if (diffMin < 60) return { label: `${diffMin} min ago`, stale };
+  const hrs = Math.floor(diffMin / 60);
+  return { label: `${hrs} hr ago`, stale };
 }
 
 function formatDate() {
@@ -65,18 +74,22 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
   );
 }
 
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const [data, setData]             = useState<ConditionsResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dark, setDark]             = useState(false);
   const [allergyProfile, setAllergyProfile] = useState<AllergyProfile | null>(null);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const coordsRef = useRef<{ lat: number; lon: number } | null>(null);
 
   // Initialise theme from localStorage on mount
   useEffect(() => {
-    const saved      = localStorage.getItem("theme");
+    const saved       = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark     = saved ? saved === "dark" : prefersDark;
+    const isDark      = saved ? saved === "dark" : prefersDark;
     setDark(isDark);
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
@@ -102,9 +115,29 @@ export default function Home() {
     localStorage.setItem("theme", next ? "dark" : "light");
   }
 
-  function handleRefresh() {
-    setData(null);
-    setRefreshKey((k) => k + 1);
+  async function handleRefresh() {
+    if (isRefreshing) return;
+
+    // If we have coords from the initial fetch, refresh in-place
+    if (coordsRef.current) {
+      setIsRefreshing(true);
+      try {
+        const { lat, lon } = coordsRef.current;
+        const res = await fetch(`/api/conditions?lat=${lat}&lon=${lon}`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        const newData: ConditionsResponse = await res.json();
+        if (data?.usingFallbackLocation) newData.usingFallbackLocation = true;
+        setData(newData);
+      } catch {
+        // silently keep existing data on failure
+      } finally {
+        setIsRefreshing(false);
+      }
+    } else {
+      // No coords yet (initial load failed) — fall back to full remount
+      setData(null);
+      setRefreshKey((k) => k + 1);
+    }
   }
 
   function handleSaveProfile(profile: AllergyProfile) {
@@ -135,10 +168,13 @@ export default function Home() {
       <LocationGate
         key={refreshKey}
         onData={setData}
+        onLocation={(lat, lon) => { coordsRef.current = { lat, lon }; }}
         darkToggle={<DarkModeToggle dark={dark} onToggle={toggleDark} />}
       />
     );
   }
+
+  const { label: updatedLabel, stale } = relativeTime(data.fetchedAt);
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
@@ -157,34 +193,54 @@ export default function Home() {
         <header className="mb-7">
           <div className="flex items-start justify-between">
             <div>
+              {/* App identity eyebrow */}
+              <div className="flex items-center gap-1 text-sage-500 dark:text-sage-500 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1">
+                <Leaf className="w-2.5 h-2.5" />
+                <span>Hayfever</span>
+              </div>
+
+              {/* Location */}
               <div className="flex items-center gap-1.5 text-sage-600 dark:text-sage-400 text-sm font-medium mb-1.5">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>{data.locationName}</span>
               </div>
+
+              {/* Date */}
               <h1 className="text-3xl font-semibold text-charcoal-800 dark:text-cream-200 leading-tight">
                 {formatDate()}
               </h1>
-              <p className="text-charcoal-400 dark:text-charcoal-300 text-sm mt-1">
-                Updated at {formatTime(data.fetchedAt)}
+
+              {/* Updated timestamp — amber tint when stale */}
+              <p className={`text-sm mt-1 transition-colors ${
+                stale
+                  ? "text-clay-500 dark:text-clay-400"
+                  : "text-charcoal-400 dark:text-charcoal-300"
+              }`}>
+                {stale && <span className="inline-block w-1.5 h-1.5 rounded-full bg-clay-400 mr-1.5 align-middle" />}
+                {updatedLabel}
               </p>
             </div>
 
             <div className="flex items-center gap-2 mt-1">
+              {/* Allergens button — icon + label */}
               <button
                 onClick={() => setShowProfileSetup(true)}
-                className="p-2 rounded-lg text-charcoal-400 dark:text-charcoal-400 hover:text-sage-600 dark:hover:text-sage-400 hover:bg-sage-50 dark:hover:bg-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400"
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-charcoal-400 dark:text-charcoal-400 hover:text-sage-600 dark:hover:text-sage-400 hover:bg-sage-50 dark:hover:bg-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400"
                 aria-label="Edit allergy profile"
-                title="Edit allergy profile"
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden sm:inline text-xs font-medium">Allergens</span>
               </button>
+
               <DarkModeToggle dark={dark} onToggle={toggleDark} />
+
               <button
                 onClick={handleRefresh}
-                className="flex items-center gap-1.5 text-sm text-charcoal-400 dark:text-charcoal-300 hover:text-sage-600 dark:hover:text-sage-400 transition-colors px-3 py-2 rounded-lg hover:bg-sage-50 dark:hover:bg-charcoal-700"
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 text-sm text-charcoal-400 dark:text-charcoal-300 hover:text-sage-600 dark:hover:text-sage-400 transition-colors px-3 py-2 rounded-lg hover:bg-sage-50 dark:hover:bg-charcoal-700 disabled:opacity-50"
                 aria-label="Refresh conditions"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
                 Refresh
               </button>
             </div>
@@ -202,13 +258,21 @@ export default function Home() {
           </div>
         )}
 
-        {/* Cards */}
+        {/* Cards — staggered entrance animation */}
         <div className="space-y-4">
-          <RecommendationCard recommendation={recommendation} />
-          <WeatherCard weather={data.weather} />
-          <PollenCard pollen={data.pollen} />
+          <div className="card-enter" style={{ animationDelay: "0ms" }}>
+            <RecommendationCard recommendation={recommendation} />
+          </div>
+          <div className="card-enter" style={{ animationDelay: "80ms" }}>
+            <WeatherCard weather={data.weather} />
+          </div>
+          <div className="card-enter" style={{ animationDelay: "160ms" }}>
+            <PollenCard pollen={data.pollen} />
+          </div>
           {data.weeklyForecast && data.weeklyForecast.length > 0 && (
-            <WeeklyOutlook forecasts={data.weeklyForecast} allergyProfile={allergyProfile} />
+            <div className="card-enter" style={{ animationDelay: "240ms" }}>
+              <WeeklyOutlook forecasts={data.weeklyForecast} allergyProfile={allergyProfile} />
+            </div>
           )}
         </div>
 
@@ -218,8 +282,8 @@ export default function Home() {
             Weather &amp; pollen data from{" "}
             <a
               href="https://open-meteo.com"
-          target="_blank"
-          rel="noopener noreferrer"
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
             >
               Open-Meteo
@@ -229,8 +293,8 @@ export default function Home() {
             Location from browser geolocation · Reverse geocoding by{" "}
             <a
               href="https://nominatim.org"
-          target="_blank"
-          rel="noopener noreferrer"
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
             >
               Nominatim

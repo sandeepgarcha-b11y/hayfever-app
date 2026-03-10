@@ -1,4 +1,4 @@
-import { Pill, ShirtIcon, CheckCircle2, XCircle } from "lucide-react";
+import { Pill, ShirtIcon, CheckCircle2 } from "lucide-react";
 import type { Recommendation } from "@/lib/types";
 
 interface Props {
@@ -47,11 +47,13 @@ export default function RecommendationCard({ recommendation }: Props) {
           >
             {antihistamine ? "Take an antihistamine" : "No antihistamine needed"}
           </h2>
-          {antihistamine ? (
-            <CheckCircle2 className="w-6 h-6 text-clay-500 dark:text-clay-400 flex-shrink-0" />
-          ) : (
-            <XCircle className="w-6 h-6 text-sage-400 flex-shrink-0" />
-          )}
+          <CheckCircle2
+            className={`w-6 h-6 flex-shrink-0 ${
+              antihistamine
+                ? "text-clay-500 dark:text-clay-400"
+                : "text-sage-500 dark:text-sage-400"
+            }`}
+          />
         </div>
 
         <p

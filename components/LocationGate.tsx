@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { MapPin, Loader2, AlertTriangle } from "lucide-react";
 import type { ConditionsResponse } from "@/lib/types";
 
 interface Props {
   onData: (data: ConditionsResponse) => void;
+  onLocation?: (lat: number, lon: number) => void;
   darkToggle?: React.ReactNode;
 }
 
@@ -19,8 +20,12 @@ type State =
   | { status: "error"; message: string }
   | { status: "done" };
 
-export default function LocationGate({ onData, darkToggle }: Props) {
+export default function LocationGate({ onData, onLocation, darkToggle }: Props) {
   const [state, setState] = useState<State>({ status: "idle" });
+
+  // Keep a stable ref so the useCallback below doesn't need onLocation as a dep
+  const onLocationRef = useRef(onLocation);
+  onLocationRef.current = onLocation;
 
   const fetchConditions = useCallback(
     async (lat: number, lon: number, isFallback = false) => {
@@ -33,6 +38,7 @@ export default function LocationGate({ onData, darkToggle }: Props) {
         }
         const data: ConditionsResponse = await res.json();
         if (isFallback) data.usingFallbackLocation = true;
+        onLocationRef.current?.(lat, lon);
         onData(data);
         setState({ status: "done" });
       } catch (err) {
