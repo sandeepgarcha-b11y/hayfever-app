@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌿 Hayfever Dashboard
 
-## Getting Started
+A personal weather and pollen dashboard that tells you whether to take an antihistamine and what to wear — built for people who care about going outside comfortably.
 
-First, run the development server:
+**Live app → [hayfever-app.vercel.app](https://hayfever-app.vercel.app)**
+
+---
+
+## What it does
+
+- Detects your location (or falls back to Ealing, London)
+- Shows current weather conditions: temperature, feels-like, UV, wind, rain probability
+- Shows real-time pollen levels for grass, tree, and weed with a visual scale
+- Recommends whether to take an antihistamine based on combined pollen load
+- Suggests what to wear for the day based on temperature and conditions
+- Supports dark mode with an earthy, classic feel
+
+## Data sources
+
+| Data | Source |
+|------|--------|
+| Weather | [Open-Meteo Forecast API](https://open-meteo.com) — free, no API key required |
+| Pollen | [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) — species-level pollen counts |
+| Location name | [Nominatim / OpenStreetMap](https://nominatim.org) — reverse geocoding |
+
+## Tech stack
+
+- **Framework:** Next.js 14 (App Router)
+- **Styling:** Tailwind CSS with a custom earthy palette
+- **Language:** TypeScript
+- **Deployment:** Vercel
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Note: browser geolocation may be blocked on `localhost` depending on your OS/browser permissions. The app will automatically fall back to Ealing, London in that case.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+The app is deployed on Vercel. To push a new production release:
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+git push origin main
+npx vercel --prod
+```
