@@ -28,6 +28,22 @@ export interface Recommendation {
   clothing: ClothingItem[];
 }
 
+export interface AllergyProfile {
+  grass: boolean;
+  tree: boolean;
+  weed: boolean;
+}
+
+export interface DailyForecast {
+  date: string;
+  maxTemp: number;
+  weatherCode: number;
+  precipProbability: number;
+  grassPollen: number | null;
+  treePollen: number | null;
+  weedPollen: number | null;
+}
+
 export interface ConditionsResponse {
   weather: WeatherData;
   pollen: PollenData;
@@ -35,4 +51,5 @@ export interface ConditionsResponse {
   locationName: string;
   fetchedAt: string;
   usingFallbackLocation?: boolean;
+  weeklyForecast?: DailyForecast[];
 }

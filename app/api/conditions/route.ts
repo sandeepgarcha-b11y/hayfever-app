@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildRecommendation } from "@/lib/recommendations";
-import type { WeatherData, PollenData, ConditionsResponse } from "@/lib/types";
+import type { WeatherData, PollenData, ConditionsResponse, DailyForecast } from "@/lib/types";
+
+const maxOf = (...vals: (number | null | undefined)[]): number | null => {
+  const nums = vals.filter((v): v is number => v != null && !isNaN(v));
+  return nums.length ? Math.max(...nums) : null;
+};
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -25,13 +30,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Fetch weather and geocoding in parallel; pollen handled separately so its
-    // failure doesn't take down the whole response.
     const [weatherRes, geoRes] = await Promise.all([
       fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${latNum}&longitude=${lonNum}` +
           `&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,uv_index,precipitation_probability,is_day` +
-          `&timezone=auto`
+          `&daily=temperature_2m_max,weather_code,precipitation_probability_max` +
+          `&forecast_days=7&timezone=auto`
       ),
       fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latNum}&lon=${lonNum}&format=json`,
@@ -64,25 +68,24 @@ export async function GET(req: NextRequest) {
       isDay: c.is_day ?? 1,
     };
 
-    // Pollen is best-effort — if the API is unavailable for a region, fall back to nulls
+    // Pollen is best-effort — if unavailable for a region, fall back to nulls
     let pollen: PollenData = { grassPollen: null, treePollen: null, weedPollen: null };
+    const weeklyPollenByDate: Record<string, { grass: number[]; tree: number[]; weed: number[] }> = {};
+
     try {
-      // Open-Meteo uses species-level pollen variables, not aggregated tree/weed.
-      // We fetch all species and aggregate into grass / tree / weed for display.
       const pollenRes = await fetch(
         `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latNum}&longitude=${lonNum}` +
           `&current=grass_pollen,alder_pollen,birch_pollen,olive_pollen,mugwort_pollen,ragweed_pollen` +
-          `&timezone=auto`
+          `&hourly=grass_pollen,alder_pollen,birch_pollen,olive_pollen,mugwort_pollen,ragweed_pollen` +
+          `&forecast_days=7&timezone=auto`
       );
+
       if (pollenRes.ok) {
         const pollenJson = await pollenRes.json();
+
+        // Current pollen (for today's cards)
         const p = pollenJson.current;
         if (p) {
-          // Use the highest reading within each category as the representative value
-          const maxOf = (...vals: (number | null | undefined)[]): number | null => {
-            const nums = vals.filter((v): v is number => v != null && !isNaN(v));
-            return nums.length ? Math.max(...nums) : null;
-          };
           pollen = {
             grassPollen: p.grass_pollen ?? null,
             treePollen: maxOf(p.alder_pollen, p.birch_pollen, p.olive_pollen),
@@ -91,12 +94,55 @@ export async function GET(req: NextRequest) {
         } else {
           console.warn("Pollen API returned no current data — using nulls");
         }
+
+        // Hourly → daily max aggregation (for 7-day outlook)
+        if (pollenJson.hourly?.time) {
+          (pollenJson.hourly.time as string[]).forEach((time: string, i: number) => {
+            const date = time.split("T")[0];
+            if (!weeklyPollenByDate[date]) {
+              weeklyPollenByDate[date] = { grass: [], tree: [], weed: [] };
+            }
+
+            const gv = pollenJson.hourly.grass_pollen?.[i];
+            if (gv != null && !isNaN(gv) && gv > 0) weeklyPollenByDate[date].grass.push(gv);
+
+            const tv = maxOf(
+              pollenJson.hourly.alder_pollen?.[i],
+              pollenJson.hourly.birch_pollen?.[i],
+              pollenJson.hourly.olive_pollen?.[i]
+            );
+            if (tv != null && tv > 0) weeklyPollenByDate[date].tree.push(tv);
+
+            const wv = maxOf(
+              pollenJson.hourly.mugwort_pollen?.[i],
+              pollenJson.hourly.ragweed_pollen?.[i]
+            );
+            if (wv != null && wv > 0) weeklyPollenByDate[date].weed.push(wv);
+          });
+        }
       } else {
         const body = await pollenRes.text();
         console.warn(`Pollen API ${pollenRes.status} — using nulls:`, body);
       }
     } catch (pollenErr) {
       console.warn("Pollen API fetch failed — using nulls:", pollenErr);
+    }
+
+    // Build 7-day forecast
+    const weeklyForecast: DailyForecast[] = [];
+    if (weatherJson.daily?.time) {
+      (weatherJson.daily.time as string[]).forEach((date: string, i: number) => {
+        const pd = weeklyPollenByDate[date];
+        weeklyForecast.push({
+          date,
+          maxTemp: Math.round(weatherJson.daily.temperature_2m_max?.[i] ?? 0),
+          weatherCode: weatherJson.daily.weather_code?.[i] ?? 0,
+          precipProbability: Math.round(weatherJson.daily.precipitation_probability_max?.[i] ?? 0),
+          grassPollen: pd?.grass.length ? Math.max(...pd.grass) : null,
+          treePollen: pd?.tree.length  ? Math.max(...pd.tree)  : null,
+          weedPollen: pd?.weed.length  ? Math.max(...pd.weed)  : null,
+        });
+      });
     }
 
     const recommendation = buildRecommendation(weather, pollen);
@@ -120,6 +166,7 @@ export async function GET(req: NextRequest) {
       recommendation,
       locationName,
       fetchedAt: new Date().toISOString(),
+      weeklyForecast,
     };
 
     return NextResponse.json(response, {

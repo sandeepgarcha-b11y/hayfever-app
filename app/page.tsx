@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MapPin, MapPinOff, RefreshCw, Sun, Moon } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { MapPin, MapPinOff, RefreshCw, Sun, Moon, SlidersHorizontal } from "lucide-react";
 import LocationGate from "@/components/LocationGate";
 import WeatherCard from "@/components/WeatherCard";
 import PollenCard from "@/components/PollenCard";
 import RecommendationCard from "@/components/RecommendationCard";
-import type { ConditionsResponse } from "@/lib/types";
+import WeeklyOutlook from "@/components/WeeklyOutlook";
+import WeatherBackground from "@/components/WeatherBackground";
+import AllergyProfileSetup from "@/components/AllergyProfileSetup";
+import { buildRecommendation, getPollenLevel, getPollenLevelIndex } from "@/lib/recommendations";
+import type { ConditionsResponse, AllergyProfile } from "@/lib/types";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -24,7 +28,7 @@ function formatDate() {
 function LeafMotif() {
   return (
     <svg
-      className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none select-none"
+      className="absolute inset-0 w-full h-full opacity-[0.035] pointer-events-none select-none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
@@ -49,10 +53,8 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
         ${dark ? "bg-charcoal-700 focus:ring-offset-charcoal-900" : "bg-cream-400 focus:ring-offset-cream-200"}
       `}
     >
-      {/* Track icons */}
-      <Sun className="absolute left-1.5 w-3.5 h-3.5 text-clay-400 transition-opacity duration-200" style={{ opacity: dark ? 0.4 : 1 }} />
+      <Sun  className="absolute left-1.5 w-3.5 h-3.5 text-clay-400 transition-opacity duration-200"  style={{ opacity: dark ? 0.4 : 1 }} />
       <Moon className="absolute right-1.5 w-3.5 h-3.5 text-sage-400 transition-opacity duration-200" style={{ opacity: dark ? 1 : 0.4 }} />
-      {/* Thumb */}
       <span
         className={`
           absolute w-5 h-5 rounded-full shadow-sm transition-all duration-300
@@ -64,17 +66,33 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
 }
 
 export default function Home() {
-  const [data, setData] = useState<ConditionsResponse | null>(null);
+  const [data, setData]             = useState<ConditionsResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [dark, setDark] = useState(false);
+  const [dark, setDark]             = useState(false);
+  const [allergyProfile, setAllergyProfile] = useState<AllergyProfile | null>(null);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
 
-  // Initialise from localStorage on mount
+  // Initialise theme from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("theme");
+    const saved      = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = saved ? saved === "dark" : prefersDark;
+    const isDark     = saved ? saved === "dark" : prefersDark;
     setDark(isDark);
     document.documentElement.classList.toggle("dark", isDark);
+  }, []);
+
+  // Initialise allergy profile from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("allergyProfile");
+    if (saved) {
+      try {
+        setAllergyProfile(JSON.parse(saved));
+      } catch {
+        setShowProfileSetup(true);
+      }
+    } else {
+      setShowProfileSetup(true);
+    }
   }, []);
 
   function toggleDark() {
@@ -89,12 +107,49 @@ export default function Home() {
     setRefreshKey((k) => k + 1);
   }
 
-  if (!data) {
-    return <LocationGate key={refreshKey} onData={setData} darkToggle={<DarkModeToggle dark={dark} onToggle={toggleDark} />} />;
+  function handleSaveProfile(profile: AllergyProfile) {
+    setAllergyProfile(profile);
+    localStorage.setItem("allergyProfile", JSON.stringify(profile));
+    setShowProfileSetup(false);
+  }
+
+  // Compute personalised recommendation client-side using the allergy profile
+  const recommendation = useMemo(() => {
+    if (!data) return null;
+    return allergyProfile
+      ? buildRecommendation(data.weather, data.pollen, allergyProfile)
+      : data.recommendation;
+  }, [data, allergyProfile]);
+
+  // Determine if pollen is objectively high (for WeatherBackground — not profile-filtered)
+  const rawPollenHigh = useMemo(() => {
+    if (!data) return false;
+    const levels = [data.pollen.grassPollen, data.pollen.treePollen, data.pollen.weedPollen]
+      .map(getPollenLevel)
+      .map(getPollenLevelIndex);
+    return Math.max(...levels) >= 3; // High or Very High
+  }, [data]);
+
+  if (!data || !recommendation) {
+    return (
+      <LocationGate
+        key={refreshKey}
+        onData={setData}
+        darkToggle={<DarkModeToggle dark={dark} onToggle={toggleDark} />}
+      />
+    );
   }
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+      {/* Ambient weather background — behind leaf motif */}
+      <WeatherBackground
+        weatherCode={data.weather.weatherCode}
+        isDay={data.weather.isDay}
+        highPollen={rawPollenHigh}
+      />
+
+      {/* Leaf texture */}
       <LeafMotif />
 
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
@@ -115,6 +170,14 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => setShowProfileSetup(true)}
+                className="p-2 rounded-lg text-charcoal-400 dark:text-charcoal-400 hover:text-sage-600 dark:hover:text-sage-400 hover:bg-sage-50 dark:hover:bg-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400"
+                aria-label="Edit allergy profile"
+                title="Edit allergy profile"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+              </button>
               <DarkModeToggle dark={dark} onToggle={toggleDark} />
               <button
                 onClick={handleRefresh}
@@ -141,9 +204,12 @@ export default function Home() {
 
         {/* Cards */}
         <div className="space-y-4">
-          <RecommendationCard recommendation={data.recommendation} />
+          <RecommendationCard recommendation={recommendation} />
           <WeatherCard weather={data.weather} />
           <PollenCard pollen={data.pollen} />
+          {data.weeklyForecast && data.weeklyForecast.length > 0 && (
+            <WeeklyOutlook forecasts={data.weeklyForecast} allergyProfile={allergyProfile} />
+          )}
         </div>
 
         {/* Footer */}
@@ -152,8 +218,8 @@ export default function Home() {
             Weather &amp; pollen data from{" "}
             <a
               href="https://open-meteo.com"
-              target="_blank"
-              rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
               className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
             >
               Open-Meteo
@@ -163,8 +229,8 @@ export default function Home() {
             Location from browser geolocation · Reverse geocoding by{" "}
             <a
               href="https://nominatim.org"
-              target="_blank"
-              rel="noopener noreferrer"
+          target="_blank"
+          rel="noopener noreferrer"
               className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
             >
               Nominatim
@@ -172,6 +238,14 @@ export default function Home() {
           </p>
         </footer>
       </div>
+
+      {/* Allergy profile setup modal */}
+      {showProfileSetup && (
+        <AllergyProfileSetup
+          initial={allergyProfile ?? undefined}
+          onSave={handleSaveProfile}
+        />
+      )}
     </div>
   );
 }

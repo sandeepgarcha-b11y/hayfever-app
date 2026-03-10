@@ -1,4 +1,4 @@
-import type { WeatherData, PollenData, PollenLevel, Recommendation, ClothingItem } from "./types";
+import type { WeatherData, PollenData, PollenLevel, Recommendation, ClothingItem, AllergyProfile } from "./types";
 
 export function getPollenLevel(value: number | null): PollenLevel {
   if (value === null || value === 0) return "None";
@@ -35,11 +35,15 @@ export function getWeatherDescription(code: number): string {
 
 export function buildRecommendation(
   weather: WeatherData,
-  pollen: PollenData
+  pollen: PollenData,
+  allergyProfile?: AllergyProfile
 ): Recommendation {
-  const grassLevel = getPollenLevel(pollen.grassPollen);
-  const treeLevel = getPollenLevel(pollen.treePollen);
-  const weedLevel = getPollenLevel(pollen.weedPollen);
+  const profile: AllergyProfile = allergyProfile ?? { grass: true, tree: true, weed: true };
+
+  // Only consider pollens the user is actually allergic to
+  const grassLevel = profile.grass ? getPollenLevel(pollen.grassPollen) : "None";
+  const treeLevel  = profile.tree  ? getPollenLevel(pollen.treePollen)  : "None";
+  const weedLevel  = profile.weed  ? getPollenLevel(pollen.weedPollen)  : "None";
 
   const maxPollenIndex = Math.max(
     getPollenLevelIndex(grassLevel),
@@ -49,22 +53,30 @@ export function buildRecommendation(
 
   const highPollen = maxPollenIndex >= 2; // Moderate or above
   const highUV = weather.uvIndex >= 6;
+  const windyHighPollen = weather.windSpeed >= 20 && maxPollenIndex >= 2;
+
   const antihistamine = highPollen || highUV;
 
   const reasons: string[] = [];
   if (highPollen) {
     const highOnes = [
-      grassLevel !== "None" && grassLevel !== "Low" ? `grass (${grassLevel})` : null,
-      treeLevel !== "None" && treeLevel !== "Low" ? `tree (${treeLevel})` : null,
-      weedLevel !== "None" && weedLevel !== "Low" ? `weed (${weedLevel})` : null,
+      profile.grass && grassLevel !== "None" && grassLevel !== "Low" ? `grass (${grassLevel.toLowerCase()})` : null,
+      profile.tree  && treeLevel  !== "None" && treeLevel  !== "Low" ? `tree (${treeLevel.toLowerCase()})`  : null,
+      profile.weed  && weedLevel  !== "None" && weedLevel  !== "Low" ? `weed (${weedLevel.toLowerCase()})`  : null,
     ].filter(Boolean);
-    reasons.push(`pollen levels are elevated: ${highOnes.join(", ")}`);
+    if (highOnes.length > 0) reasons.push(`pollen levels are elevated: ${highOnes.join(", ")}`);
   }
   if (highUV) reasons.push(`UV index is high (${weather.uvIndex})`);
 
-  const antihistamineReason = antihistamine
-    ? `Recommended because ${reasons.join(" and ")}.`
-    : "Pollen and UV levels are low — no antihistamine needed today.";
+  let antihistamineReason: string;
+  if (antihistamine) {
+    antihistamineReason = `Recommended because ${reasons.join(" and ")}.`;
+    if (windyHighPollen) {
+      antihistamineReason += ` Windy conditions (${weather.windSpeed} km/h) will spread pollen further — exposure risk is higher than usual.`;
+    }
+  } else {
+    antihistamineReason = "Pollen and UV levels are low — no antihistamine needed today.";
+  }
 
   const clothing: ClothingItem[] = [];
 
