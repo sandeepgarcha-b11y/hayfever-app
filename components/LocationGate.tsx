@@ -6,9 +6,9 @@ import type { ConditionsResponse } from "@/lib/types";
 
 interface Props {
   onData: (data: ConditionsResponse) => void;
+  darkToggle?: React.ReactNode;
 }
 
-// Fallback location: Ealing, London
 const FALLBACK = { lat: 51.513, lon: -0.3089, label: "Ealing, London" };
 
 type State =
@@ -19,7 +19,7 @@ type State =
   | { status: "error"; message: string }
   | { status: "done" };
 
-export default function LocationGate({ onData }: Props) {
+export default function LocationGate({ onData, darkToggle }: Props) {
   const [state, setState] = useState<State>({ status: "idle" });
 
   const fetchConditions = useCallback(
@@ -57,9 +57,7 @@ export default function LocationGate({ onData }: Props) {
     setState({ status: "requesting" });
     navigator.geolocation.getCurrentPosition(
       (pos) => fetchConditions(pos.coords.latitude, pos.coords.longitude, false),
-      () => {
-        fetchConditions(FALLBACK.lat, FALLBACK.lon, true);
-      },
+      () => fetchConditions(FALLBACK.lat, FALLBACK.lon, true),
       { timeout: 10000, maximumAge: 300000 }
     );
   }, [fetchConditions]);
@@ -76,66 +74,71 @@ export default function LocationGate({ onData }: Props) {
     state.status === "fallback-fetching";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-cream-200">
-      <div className="max-w-sm w-full mx-4 text-center">
-        <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-sage-100 mb-5">
-            {isLoading ? (
-              <Loader2 className="w-9 h-9 text-sage-600 animate-spin" />
-            ) : state.status === "error" ? (
-              <AlertTriangle className="w-9 h-9 text-clay-500" />
-            ) : (
-              <MapPin className="w-9 h-9 text-sage-600" />
-            )}
-          </div>
-
-          <h1 className="text-2xl font-semibold text-charcoal-800 mb-2">
-            {state.status === "requesting" && "Finding your location…"}
-            {state.status === "fetching" && "Loading conditions…"}
-            {state.status === "fallback-fetching" && "Loading conditions…"}
-            {state.status === "error" && "Something went wrong"}
-            {state.status === "idle" && "Hayfever Dashboard"}
-          </h1>
-
-          <p className="text-charcoal-500 text-sm leading-relaxed">
-            {state.status === "requesting" &&
-              "Please allow location access in your browser."}
-            {state.status === "fetching" &&
-              "Fetching weather and pollen data for your area."}
-            {state.status === "fallback-fetching" && (
-              <>
-                Couldn&apos;t access your location.{" "}
-                <span className="text-charcoal-400">
-                  Loading data for {FALLBACK.label} instead.
-                </span>
-              </>
-            )}
-            {state.status === "error" &&
-              (state as { status: "error"; message: string }).message}
-            {state.status === "idle" &&
-              "We need your location to show local weather and pollen conditions."}
-          </p>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+      {/* Toggle in top-right corner */}
+      {darkToggle && (
+        <div className="flex justify-end p-4">
+          {darkToggle}
         </div>
+      )}
 
-        {(state.status === "idle" || state.status === "error") && (
-          <div className="flex flex-col items-center gap-3">
-            <button
-              onClick={requestLocation}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sage-600 text-white font-medium hover:bg-sage-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
-            >
-              <MapPin className="w-4 h-4" />
-              {state.status === "error" ? "Try again" : "Use my location"}
-            </button>
-            {state.status === "error" && (
-              <button
-                onClick={() => fetchConditions(FALLBACK.lat, FALLBACK.lon, true)}
-                className="text-sm text-charcoal-400 hover:text-charcoal-600 underline transition-colors"
-              >
-                Use {FALLBACK.label} instead
-              </button>
-            )}
+      <div className="flex-1 flex items-center justify-center">
+        <div className="max-w-sm w-full mx-4 text-center">
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-sage-100 dark:bg-charcoal-700 mb-5">
+              {isLoading ? (
+                <Loader2 className="w-9 h-9 text-sage-600 dark:text-sage-400 animate-spin" />
+              ) : state.status === "error" ? (
+                <AlertTriangle className="w-9 h-9 text-clay-500 dark:text-clay-400" />
+              ) : (
+                <MapPin className="w-9 h-9 text-sage-600 dark:text-sage-400" />
+              )}
+            </div>
+
+            <h1 className="text-2xl font-semibold text-charcoal-800 dark:text-cream-200 mb-2">
+              {state.status === "requesting" && "Finding your location…"}
+              {state.status === "fetching" && "Loading conditions…"}
+              {state.status === "fallback-fetching" && "Loading conditions…"}
+              {state.status === "error" && "Something went wrong"}
+              {state.status === "idle" && "Hayfever Dashboard"}
+            </h1>
+
+            <p className="text-charcoal-500 dark:text-charcoal-300 text-sm leading-relaxed">
+              {state.status === "requesting" && "Please allow location access in your browser."}
+              {state.status === "fetching" && "Fetching weather and pollen data for your area."}
+              {state.status === "fallback-fetching" && (
+                <>
+                  Couldn&apos;t access your location.{" "}
+                  <span className="text-charcoal-400 dark:text-charcoal-400">
+                    Loading data for {FALLBACK.label} instead.
+                  </span>
+                </>
+              )}
+              {state.status === "error" && (state as { status: "error"; message: string }).message}
+              {state.status === "idle" && "We need your location to show local weather and pollen conditions."}
+            </p>
           </div>
-        )}
+
+          {(state.status === "idle" || state.status === "error") && (
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={requestLocation}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sage-600 dark:bg-sage-700 text-white font-medium hover:bg-sage-700 dark:hover:bg-sage-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
+              >
+                <MapPin className="w-4 h-4" />
+                {state.status === "error" ? "Try again" : "Use my location"}
+              </button>
+              {state.status === "error" && (
+                <button
+                  onClick={() => fetchConditions(FALLBACK.lat, FALLBACK.lon, true)}
+                  className="text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 underline transition-colors"
+                >
+                  Use {FALLBACK.label} instead
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

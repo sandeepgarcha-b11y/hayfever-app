@@ -6,11 +6,23 @@
   :root {
     --background: #f7f4ef;
     --foreground: #2d2926;
-    --card: #fdfcfa;
+    --card: #fefcf8;
+    --border: #e5ddd0;
+  }
+
+  .dark {
+    --background: #1a1714;
+    --foreground: #f0ebe0;
+    --card: #2d2926;
+    --border: #453e38;
   }
 
   html {
     color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -18,5 +30,6 @@
     color: var(--foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
