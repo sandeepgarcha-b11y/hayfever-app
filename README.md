@@ -2,7 +2,7 @@
 
 A personal weather and pollen dashboard that tells you whether to take an antihistamine and what to wear — built for people who care about going outside comfortably.
 
-**Live app → [hayfever-app.vercel.app](https://hayfever-app.vercel.app)**
+**Live app → [hayfever-app-ochre.vercel.app](https://hayfever-app-ochre.vercel.app)**
 
 ---
 

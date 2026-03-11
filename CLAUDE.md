@@ -30,7 +30,7 @@ If a change is non-obvious, include a short commit body summarizing intent and k
 - If pushing is unsafe or impossible (no remote, auth issues), explain what you need and propose the next best action.
 
 ## Deployment
-This app is deployed on Vercel at **https://hayfever-app.vercel.app**.
+This app is deployed on Vercel at **https://hayfever-app-ochre.vercel.app**.
 
 After pushing to `origin/main`, redeploy to production with:
 ```bash
