@@ -41,7 +41,7 @@ Run this after every push that contains meaningful changes. When you deploy, tel
 - the deployment URL
 - whether the build passed or failed
 
-Note: GitHub auto-deploy is not yet connected. Until it is, deployment must be triggered manually with the command above.
+Note: Once the personal GitHub repo (github.com/sandeepgarcha-b11y/hayfever-app) is connected to Vercel, pushes to main will auto-deploy. Until then, trigger manually with the command above.
 
 ## Guardrails
 - Do not commit secrets (keys, tokens, credentials, .env files with real values).
