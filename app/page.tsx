@@ -25,12 +25,12 @@ function relativeTime(iso: string): { label: string; stale: boolean } {
   return { label: `${hrs} hr ago`, stale };
 }
 
-function formatDate() {
+function formatDate(short = false) {
   return new Date().toLocaleDateString([], {
     weekday: "long",
     day: "numeric",
     month: "long",
-    year: "numeric",
+    ...(short ? {} : { year: "numeric" }),
   });
 }
 
@@ -188,9 +188,9 @@ export default function Home() {
       {/* Leaf texture */}
       <LeafMotif />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
+      <div className="relative z-10 max-w-2xl mx-auto px-4 py-4 sm:py-8">
         {/* Header */}
-        <header className="mb-7">
+        <header className="mb-3 sm:mb-7">
           <div className="flex items-start justify-between">
             <div>
               {/* App identity eyebrow */}
@@ -205,9 +205,10 @@ export default function Home() {
                 <span>{data.locationName}</span>
               </div>
 
-              {/* Date */}
-              <h1 className="text-3xl font-semibold text-charcoal-800 dark:text-cream-200 leading-tight">
-                {formatDate()}
+              {/* Date — shorter format on mobile to keep header compact */}
+              <h1 className="text-xl sm:text-3xl font-semibold text-charcoal-800 dark:text-cream-200 leading-tight">
+                <span className="sm:hidden">{formatDate(true)}</span>
+                <span className="hidden sm:inline">{formatDate()}</span>
               </h1>
 
               {/* Updated timestamp — amber tint when stale */}
@@ -279,14 +280,23 @@ export default function Home() {
         {/* Footer */}
         <footer className="mt-10 text-center text-xs text-charcoal-300 dark:text-charcoal-500 space-y-1">
           <p>
-            Weather &amp; pollen data from{" "}
+            Weather data from{" "}
             <a
-              href="https://open-meteo.com"
+              href="https://developers.google.com/maps/documentation/weather"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
             >
-              Open-Meteo
+              Google Weather API
+            </a>
+            {" · "}Pollen data from{" "}
+            <a
+              href="https://developers.google.com/maps/documentation/pollen"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
+            >
+              Google Pollen API
             </a>
           </p>
           <p>

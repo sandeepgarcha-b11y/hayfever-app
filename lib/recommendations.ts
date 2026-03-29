@@ -1,10 +1,12 @@
 import type { WeatherData, PollenData, PollenLevel, Recommendation, ClothingItem, AllergyProfile } from "./types";
 
 export function getPollenLevel(value: number | null): PollenLevel {
+  // Google Pollen API returns a Universal Pollen Index (UPI) on a 0–5 scale:
+  // 0 = none, 1 = very low, 2 = low, 3 = moderate, 4 = high, 5 = very high
   if (value === null || value === 0) return "None";
-  if (value <= 10) return "Low";
-  if (value <= 50) return "Moderate";
-  if (value <= 200) return "High";
+  if (value <= 2) return "Low";
+  if (value === 3) return "Moderate";
+  if (value === 4) return "High";
   return "Very High";
 }
 
