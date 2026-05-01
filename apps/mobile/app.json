@@ -31,7 +31,10 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiBaseUrl": ""
-    }
+      "eas": {
+        "projectId": "e3121268-84e1-436c-905f-3d8d59f250f5"
+      }
+    },
+    "owner": "hayfever-sg"
   }
 }

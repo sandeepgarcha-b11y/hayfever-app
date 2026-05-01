@@ -14,6 +14,8 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/packages/core/node_modules ./packages/core/node_modules
 COPY package.json package-lock.json ./
 COPY .npmrc ./
 COPY apps/api ./apps/api
@@ -33,8 +35,8 @@ COPY .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/packages/core/dist ./packages/core/dist
 
 EXPOSE 8080
 CMD ["npm", "run", "start", "-w", "@hayfever/api"]
