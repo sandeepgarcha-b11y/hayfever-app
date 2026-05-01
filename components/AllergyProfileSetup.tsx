@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Leaf } from "lucide-react";
+import { CheckCircle2, Circle, Leaf, X } from "lucide-react";
 import type { AllergyProfile } from "@/lib/types";
 
 interface Props {
   initial?: AllergyProfile;
   onSave: (profile: AllergyProfile) => void;
+  onCancel: () => void;
 }
 
 const POLLEN_TYPES: Array<{ key: keyof AllergyProfile; label: string; description: string }> = [
@@ -15,7 +16,7 @@ const POLLEN_TYPES: Array<{ key: keyof AllergyProfile; label: string; descriptio
   { key: "weed",   label: "Weed",   description: "Mugwort, ragweed" },
 ];
 
-export default function AllergyProfileSetup({ initial, onSave }: Props) {
+export default function AllergyProfileSetup({ initial, onSave, onCancel }: Props) {
   const [profile, setProfile] = useState<AllergyProfile>(
     initial ?? { grass: true, tree: true, weed: true }
   );
@@ -42,18 +43,27 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
         aria-labelledby="allergy-profile-title"
         className="modal-enter relative w-full max-w-[min(24rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[var(--card)] rounded-2xl shadow-xl border border-cream-400 dark:border-charcoal-600 p-6 sm:p-7"
       >
+        <button
+          type="button"
+          onClick={onCancel}
+          aria-label="Close pollen triggers"
+          className="absolute right-4 top-4 rounded-lg p-2 text-charcoal-300 transition-colors hover:bg-cream-200 hover:text-charcoal-600 focus:outline-none focus:ring-2 focus:ring-sage-400 dark:text-charcoal-400 dark:hover:bg-charcoal-700 dark:hover:text-cream-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
         {/* Icon + heading */}
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-2 pr-8">
           <div className="p-2 rounded-xl bg-sage-100 dark:bg-sage-900">
             <Leaf className="w-5 h-5 text-sage-600 dark:text-sage-400" />
           </div>
           <h2 id="allergy-profile-title" className="text-lg font-semibold text-charcoal-800 dark:text-cream-200">
-            Your allergy profile
+            Pollen triggers
           </h2>
         </div>
         <p className="text-sm text-charcoal-500 dark:text-charcoal-300 mb-6 leading-relaxed">
-          Select the pollens that affect you. We&apos;ll use this to personalise your
-          antihistamine recommendation.
+          Choose the pollen types that usually affect you. The dashboard still shows
+          all pollen data, but your plan focuses on these triggers.
         </p>
 
         {/* Toggle tiles */}
@@ -92,14 +102,14 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
           onClick={handleSave}
           className="w-full py-3 rounded-xl bg-sage-600 dark:bg-sage-700 text-white font-semibold text-sm hover:bg-sage-700 dark:hover:bg-sage-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
         >
-          Save preferences
+          Save triggers
         </button>
         <button
           type="button"
           onClick={() => onSave({ grass: true, tree: true, weed: true })}
           className="w-full mt-3 text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 transition-colors"
         >
-          Use defaults (all pollen)
+          Track all pollen
         </button>
       </div>
     </div>

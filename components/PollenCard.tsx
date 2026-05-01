@@ -1,9 +1,11 @@
-import { Leaf } from "lucide-react";
-import type { PollenData, PollenLevel } from "@/lib/types";
-import { getPollenLevel } from "@/lib/recommendations";
+import { Leaf, SlidersHorizontal } from "lucide-react";
+import type { AllergyProfile, PollenData, PollenLevel } from "@/lib/types";
+import { getPollenLevel, getPollenLevelIndex } from "@/lib/recommendations";
 
 interface Props {
   pollen: PollenData;
+  allergyProfile: AllergyProfile;
+  onEditTriggers: () => void;
 }
 
 const levelConfig: Record<
@@ -17,14 +19,35 @@ const levelConfig: Record<
   "Very High": { bg: "bg-clay-300 dark:bg-clay-700",         text: "text-clay-900 dark:text-clay-100",         bar: "bg-clay-700 dark:bg-clay-300",           track: "bg-cream-300 dark:bg-charcoal-600",   width: "w-full" },
 };
 
-function PollenRow({ label, value }: { label: string; value: number | null }) {
+const POLLEN_TYPES: Array<{ key: keyof AllergyProfile; label: string; dataKey: keyof PollenData }> = [
+  { key: "grass", label: "Grass", dataKey: "grassPollen" },
+  { key: "tree", label: "Tree", dataKey: "treePollen" },
+  { key: "weed", label: "Weed", dataKey: "weedPollen" },
+];
+
+function PollenRow({
+  label,
+  value,
+  tracked,
+}: {
+  label: string;
+  value: number | null;
+  tracked: boolean;
+}) {
   const level = getPollenLevel(value);
   const config = levelConfig[level];
 
   return (
-    <div className="space-y-1.5">
+    <div className={`space-y-1.5 transition-opacity ${tracked ? "" : "opacity-55"}`}>
       <div className="flex items-center justify-between">
-        <span className="text-sm text-charcoal-600 dark:text-charcoal-200 font-medium">{label}</span>
+        <span className="flex items-center gap-2 text-sm text-charcoal-600 dark:text-charcoal-200 font-medium">
+          {label}
+          {!tracked && (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-charcoal-300 dark:text-charcoal-500">
+              Off
+            </span>
+          )}
+        </span>
         <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${config.bg} ${config.text}`}>
           {level}
           {value !== null && value > 0 && (
@@ -39,21 +62,18 @@ function PollenRow({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-function overallLevel(pollen: PollenData): PollenLevel {
-  const levels: PollenLevel[] = [
-    getPollenLevel(pollen.grassPollen),
-    getPollenLevel(pollen.treePollen),
-    getPollenLevel(pollen.weedPollen),
-  ];
-  const order: PollenLevel[] = ["None", "Low", "Moderate", "High", "Very High"];
-  return levels.reduce((max, l) =>
-    order.indexOf(l) > order.indexOf(max) ? l : max
+function triggerLevel(pollen: PollenData, allergyProfile: AllergyProfile): PollenLevel {
+  return POLLEN_TYPES.map(({ key, dataKey }) =>
+    allergyProfile[key] ? getPollenLevel(pollen[dataKey]) : "None"
+  ).reduce((max, level) =>
+    getPollenLevelIndex(level) > getPollenLevelIndex(max) ? level : max
   );
 }
 
-export default function PollenCard({ pollen }: Props) {
-  const overall = overallLevel(pollen);
+export default function PollenCard({ pollen, allergyProfile, onEditTriggers }: Props) {
+  const overall = triggerLevel(pollen, allergyProfile);
   const config = levelConfig[overall];
+  const activeTriggers = POLLEN_TYPES.filter(({ key }) => allergyProfile[key]);
 
   return (
     <div className="h-full bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-6">
@@ -63,21 +83,49 @@ export default function PollenCard({ pollen }: Props) {
             Pollen
           </h2>
           <div className="flex items-center gap-2.5">
-            <span className="text-lg font-semibold text-charcoal-800 dark:text-cream-200">Overall</span>
+            <span className="text-lg font-semibold text-charcoal-800 dark:text-cream-200">Trigger level</span>
             <span className={`text-xs font-semibold px-3 py-1 rounded-full ${config.bg} ${config.text}`}>
               {overall}
             </span>
           </div>
         </div>
-        <div className={`p-2 rounded-xl ${config.bg}`}>
-          <Leaf className={`w-5 h-5 ${config.text}`} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onEditTriggers}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-charcoal-400 transition-colors hover:bg-sage-50 hover:text-sage-600 focus:outline-none focus:ring-2 focus:ring-sage-400 dark:text-charcoal-300 dark:hover:bg-charcoal-700 dark:hover:text-sage-300"
+            aria-label="Edit pollen triggers"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+          <div className={`p-2 rounded-xl ${config.bg}`}>
+            <Leaf className={`w-5 h-5 ${config.text}`} />
+          </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <PollenRow label="Grass pollen" value={pollen.grassPollen} />
-        <PollenRow label="Tree pollen" value={pollen.treePollen} />
-        <PollenRow label="Weed pollen" value={pollen.weedPollen} />
+        {POLLEN_TYPES.map(({ key, label, dataKey }) => (
+          <PollenRow
+            key={key}
+            label={`${label} pollen`}
+            value={pollen[dataKey]}
+            tracked={allergyProfile[key]}
+          />
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-charcoal-300 dark:text-charcoal-500">Tracking</span>
+        {activeTriggers.map(({ key, label }) => (
+          <span
+            key={key}
+            className="rounded-full bg-sage-100 px-2.5 py-1 text-xs font-semibold text-sage-700 dark:bg-sage-900 dark:text-sage-300"
+          >
+            {label}
+          </span>
+        ))}
       </div>
 
       <p className="text-xs text-charcoal-300 dark:text-charcoal-500 mt-5">

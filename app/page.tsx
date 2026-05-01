@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { MapPin, MapPinOff, RefreshCw, Sun, Moon, SlidersHorizontal, Leaf } from "lucide-react";
+import { MapPin, MapPinOff, RefreshCw, Sun, Moon, Leaf } from "lucide-react";
 import LocationGate from "@/components/LocationGate";
 import WeatherCard from "@/components/WeatherCard";
 import PollenCard from "@/components/PollenCard";
@@ -13,6 +13,15 @@ import { buildRecommendation, getPollenLevel, getPollenLevelIndex } from "@/lib/
 import type { ConditionsResponse, AllergyProfile } from "@/lib/types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+const DEFAULT_ALLERGY_PROFILE: AllergyProfile = { grass: true, tree: true, weed: true };
+
+function normaliseAllergyProfile(profile: Partial<AllergyProfile>): AllergyProfile {
+  const normalised = { ...DEFAULT_ALLERGY_PROFILE, ...profile };
+  return normalised.grass || normalised.tree || normalised.weed
+    ? normalised
+    : DEFAULT_ALLERGY_PROFILE;
+}
 
 function relativeTime(iso: string): { label: string; stale: boolean } {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -82,7 +91,7 @@ export default function Home() {
   const [data, setData]             = useState<ConditionsResponse | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dark, setDark]             = useState(false);
-  const [allergyProfile, setAllergyProfile] = useState<AllergyProfile | null>(null);
+  const [allergyProfile, setAllergyProfile] = useState<AllergyProfile>(DEFAULT_ALLERGY_PROFILE);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -102,12 +111,10 @@ export default function Home() {
     const saved = localStorage.getItem("allergyProfile");
     if (saved) {
       try {
-        setAllergyProfile(JSON.parse(saved));
+        setAllergyProfile(normaliseAllergyProfile(JSON.parse(saved)));
       } catch {
-        setShowProfileSetup(true);
+        localStorage.removeItem("allergyProfile");
       }
-    } else {
-      setShowProfileSetup(true);
     }
   }, []);
 
@@ -146,17 +153,16 @@ export default function Home() {
   }
 
   function handleSaveProfile(profile: AllergyProfile) {
-    setAllergyProfile(profile);
-    localStorage.setItem("allergyProfile", JSON.stringify(profile));
+    const nextProfile = normaliseAllergyProfile(profile);
+    setAllergyProfile(nextProfile);
+    localStorage.setItem("allergyProfile", JSON.stringify(nextProfile));
     setShowProfileSetup(false);
   }
 
   // Compute personalised recommendation client-side using the allergy profile
   const recommendation = useMemo(() => {
     if (!data) return null;
-    return allergyProfile
-      ? buildRecommendation(data.weather, data.pollen, allergyProfile)
-      : data.recommendation;
+    return buildRecommendation(data.weather, data.pollen, allergyProfile);
   }, [data, allergyProfile]);
 
   // Determine if pollen is objectively high (for WeatherBackground — not profile-filtered)
@@ -233,17 +239,6 @@ export default function Home() {
             </div>
 
             <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2 mt-1">
-              {/* Allergens button — icon + label */}
-              <button
-                type="button"
-                onClick={() => setShowProfileSetup(true)}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-charcoal-400 dark:text-charcoal-400 hover:text-sage-600 dark:hover:text-sage-400 hover:bg-sage-50 dark:hover:bg-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400"
-                aria-label="Edit allergy profile"
-              >
-                <SlidersHorizontal className="w-4 h-4 flex-shrink-0" />
-                <span className="hidden sm:inline text-xs font-medium">Allergens</span>
-              </button>
-
               <DarkModeToggle dark={dark} onToggle={toggleDark} />
 
               <button
@@ -278,6 +273,7 @@ export default function Home() {
               recommendation={recommendation}
               weather={data.weather}
               pollen={data.pollen}
+              allergyProfile={allergyProfile}
             />
           </div>
 
@@ -286,7 +282,11 @@ export default function Home() {
               <WeatherCard weather={data.weather} />
             </div>
             <div className="card-enter h-full" style={{ animationDelay: "120ms" }}>
-              <PollenCard pollen={data.pollen} />
+              <PollenCard
+                pollen={data.pollen}
+                allergyProfile={allergyProfile}
+                onEditTriggers={() => setShowProfileSetup(true)}
+              />
             </div>
           </div>
 
@@ -336,8 +336,9 @@ export default function Home() {
       {/* Allergy profile setup modal */}
       {showProfileSetup && (
         <AllergyProfileSetup
-          initial={allergyProfile ?? undefined}
+          initial={allergyProfile}
           onSave={handleSaveProfile}
+          onCancel={() => setShowProfileSetup(false)}
         />
       )}
     </div>

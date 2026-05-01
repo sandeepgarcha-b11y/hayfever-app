@@ -77,47 +77,103 @@ export function buildRecommendation(
       antihistamineReason += ` Windy conditions (${weather.windSpeed} km/h) will spread pollen further — exposure risk is higher than usual.`;
     }
   } else {
-    antihistamineReason = "Pollen and UV levels are low — no antihistamine needed today.";
+    antihistamineReason = "Your trigger pollen and UV levels are low — no antihistamine needed today.";
   }
 
   const clothing: ClothingItem[] = [];
+  const addClothing = (item: ClothingItem) => {
+    if (!clothing.some((existing) => existing.label === item.label)) {
+      clothing.push(item);
+    }
+  };
 
-  // Temperature-based layers
-  if (weather.temperature < 8) {
-    clothing.push({ label: "Warm coat", reason: "Temperature is cold" });
-    clothing.push({ label: "Scarf & gloves", reason: "Extra warmth needed" });
-  } else if (weather.temperature < 15) {
-    clothing.push({ label: "Light jacket or fleece", reason: "Cool conditions" });
-  } else if (weather.temperature < 22) {
-    clothing.push({ label: "Light layers", reason: "Mild temperature" });
+  const feelsLike = weather.feelsLike;
+  const rainChance = weather.precipitationProbability;
+  const windy = weather.windSpeed >= 20;
+  const strongWind = weather.windSpeed >= 35;
+  const wetWeather = rainChance >= 40 || (weather.weatherCode >= 51 && weather.weatherCode <= 69);
+  const snowOrIce = weather.weatherCode >= 71 && weather.weatherCode <= 79;
+
+  // Base outfit: choose the main layer by feels-like temperature, not just air temp.
+  if (feelsLike <= 2) {
+    addClothing({ label: "Insulated coat", reason: `Feels like ${feelsLike}°C` });
+    addClothing({ label: "Hat, scarf & gloves", reason: "Cold exposure will build up quickly" });
+  } else if (feelsLike <= 8) {
+    addClothing({ label: "Warm coat", reason: `Feels like ${feelsLike}°C` });
+    addClothing({ label: "Warm mid-layer", reason: "Useful if you are outside for more than a short walk" });
+  } else if (feelsLike <= 14) {
+    addClothing({ label: "Jacket or fleece", reason: `Cool feel at ${feelsLike}°C` });
+  } else if (feelsLike <= 20) {
+    addClothing({ label: "Light layers", reason: `Mild feel at ${feelsLike}°C` });
+  } else if (feelsLike <= 25) {
+    addClothing({ label: "Breathable top", reason: `Warm feel at ${feelsLike}°C` });
+    addClothing({ label: "Light layer to carry", reason: "Useful for shade, evening, or air conditioning" });
   } else {
-    clothing.push({ label: "Light, breathable clothing", reason: "Warm day" });
+    addClothing({ label: "Loose, breathable clothing", reason: `Hot feel at ${feelsLike}°C` });
   }
 
-  // Rain
-  if (weather.precipitationProbability >= 40) {
-    clothing.push({
-      label: "Waterproof jacket or umbrella",
-      reason: `${weather.precipitationProbability}% chance of rain`,
+  // Rain and ground conditions.
+  if (rainChance >= 70) {
+    addClothing({
+      label: "Waterproof outer layer",
+      reason: `${rainChance}% chance of rain`,
+    });
+    addClothing({ label: "Water-resistant shoes", reason: "Likely wet ground and pavements" });
+  } else if (rainChance >= 40 || wetWeather) {
+    addClothing({
+      label: "Packable waterproof",
+      reason: `${rainChance}% chance of rain`,
+    });
+  } else if (rainChance >= 20) {
+    addClothing({
+      label: "Compact umbrella",
+      reason: "Small rain risk, low commitment to carry",
     });
   }
 
-  // UV / sun
-  if (weather.uvIndex >= 3) {
-    clothing.push({ label: "Sunglasses", reason: "UV index is moderate or higher" });
+  if (snowOrIce) {
+    addClothing({ label: "Grip-friendly shoes", reason: "Snow or ice risk in the forecast" });
   }
+
+  // Wind changes how warm the outfit feels and how much pollen moves around.
+  if (strongWind) {
+    addClothing({ label: "Windproof outer layer", reason: `${weather.windSpeed} km/h winds` });
+  } else if (windy) {
+    addClothing({ label: "Wind-resistant layer", reason: `${weather.windSpeed} km/h breeze` });
+  }
+
+  // UV and pollen protection overlap around eyes, skin, and hair.
+  if (weather.uvIndex >= 3 && maxPollenIndex >= 2) {
+    addClothing({ label: "Sunglasses", reason: "Helps with UV and keeps pollen out of your eyes" });
+  } else if (weather.uvIndex >= 3) {
+    addClothing({ label: "Sunglasses", reason: "UV index is moderate or higher" });
+  } else if (maxPollenIndex >= 2) {
+    addClothing({ label: "Glasses or sunglasses", reason: "Helps reduce pollen reaching your eyes" });
+  }
+
   if (weather.uvIndex >= 6) {
-    clothing.push({
+    addClothing({
       label: "Sun hat & sunscreen",
       reason: `UV index is high (${weather.uvIndex})`,
     });
   }
 
-  // Pollen — long sleeves help reduce skin exposure
   if (maxPollenIndex >= 3) {
-    clothing.push({
+    addClothing({
       label: "Long sleeves",
-      reason: "High pollen — reduces skin exposure",
+      reason: "High trigger pollen — reduces skin and fabric exposure",
+    });
+  } else if (maxPollenIndex >= 2) {
+    addClothing({
+      label: "Smooth outer layer",
+      reason: "Moderate trigger pollen — easier to shake off after being outside",
+    });
+  }
+
+  if (windyHighPollen) {
+    addClothing({
+      label: "Hat or tied-back hair",
+      reason: "Wind can carry pollen into hair and around your face",
     });
   }
 

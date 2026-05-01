@@ -1,11 +1,12 @@
 import { Pill, ShirtIcon, CheckCircle2, CloudSun, Droplets, Leaf, Wind } from "lucide-react";
-import type { PollenData, PollenLevel, Recommendation, WeatherData } from "@/lib/types";
+import type { AllergyProfile, PollenData, PollenLevel, Recommendation, WeatherData } from "@/lib/types";
 import { getPollenLevel, getPollenLevelIndex, getWeatherDescription } from "@/lib/recommendations";
 
 interface Props {
   recommendation: Recommendation;
   weather: WeatherData;
   pollen: PollenData;
+  allergyProfile: AllergyProfile;
 }
 
 const BADGE_TONE: Record<PollenLevel, string> = {
@@ -16,20 +17,20 @@ const BADGE_TONE: Record<PollenLevel, string> = {
   "Very High": "bg-clay-300 text-clay-900 dark:bg-clay-700 dark:text-clay-100",
 };
 
-function overallPollenLevel(pollen: PollenData): PollenLevel {
-  const levels = [
-    getPollenLevel(pollen.grassPollen),
-    getPollenLevel(pollen.treePollen),
-    getPollenLevel(pollen.weedPollen),
+function triggerPollenLevel(pollen: PollenData, allergyProfile: AllergyProfile): PollenLevel {
+  const levels: PollenLevel[] = [
+    allergyProfile.grass ? getPollenLevel(pollen.grassPollen) : "None",
+    allergyProfile.tree ? getPollenLevel(pollen.treePollen) : "None",
+    allergyProfile.weed ? getPollenLevel(pollen.weedPollen) : "None",
   ];
   return levels.reduce((max, level) =>
     getPollenLevelIndex(level) > getPollenLevelIndex(max) ? level : max
   );
 }
 
-export default function RecommendationCard({ recommendation, weather, pollen }: Props) {
+export default function RecommendationCard({ recommendation, weather, pollen, allergyProfile }: Props) {
   const { antihistamine, antihistamineReason, clothing } = recommendation;
-  const pollenLevel = overallPollenLevel(pollen);
+  const pollenLevel = triggerPollenLevel(pollen, allergyProfile);
 
   return (
     <section className="rounded-2xl overflow-hidden shadow-sm border border-cream-400 dark:border-charcoal-600 bg-[var(--card)]">
@@ -99,7 +100,7 @@ export default function RecommendationCard({ recommendation, weather, pollen }: 
           <div className="grid grid-cols-2 gap-2">
             <SummaryStat
               icon={<Leaf className="w-4 h-4" />}
-              label="Pollen"
+              label="Triggers"
               value={pollenLevel}
               valueClassName={BADGE_TONE[pollenLevel]}
             />
