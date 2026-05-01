@@ -44,15 +44,27 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
 
   const profile: AllergyProfile = allergyProfile ?? { grass: true, tree: true, weed: true };
   const outlookLabel = forecasts.length === 1 ? "Today's Outlook" : `${forecasts.length}-Day Outlook`;
+  const gridStyle = {
+    gridTemplateColumns:
+      forecasts.length <= 5
+        ? `repeat(${forecasts.length}, minmax(0, 1fr))`
+        : `repeat(${forecasts.length}, minmax(56px, 1fr))`,
+    minWidth: forecasts.length <= 5 ? "100%" : `${forecasts.length * 64}px`,
+  };
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-6">
-      <h2 className="text-xs font-semibold text-charcoal-400 dark:text-charcoal-300 uppercase tracking-widest mb-4">
-        {outlookLabel}
-      </h2>
+    <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-5 sm:p-6">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between mb-4">
+        <h2 className="text-xs font-semibold text-charcoal-400 dark:text-charcoal-300 uppercase tracking-widest">
+          {outlookLabel}
+        </h2>
+        <p className="text-xs text-charcoal-300 dark:text-charcoal-500">
+          Pollen badge shows your relevant allergens only
+        </p>
+      </div>
 
       <div className="overflow-x-auto -mx-1 pb-1">
-        <div className="flex gap-1.5 sm:gap-2 min-w-max px-1">
+        <div className="grid gap-1.5 sm:gap-2 px-1" style={gridStyle}>
           {forecasts.map((forecast, i) => {
             const level = overallLevel(forecast, profile);
             const isToday = i === 0;
@@ -60,7 +72,7 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
             return (
               <div
                 key={forecast.date}
-                className={`flex flex-col items-center gap-2 px-2 sm:px-3 py-3 rounded-xl min-w-[56px] sm:min-w-[72px] ${
+                className={`flex min-w-0 flex-col items-center gap-2 rounded-xl px-2 py-3 sm:px-3 ${
                   isToday
                     ? "bg-sage-50 dark:bg-sage-900/40 border border-sage-200 dark:border-sage-700"
                     : "bg-cream-100 dark:bg-charcoal-700"
@@ -84,10 +96,6 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
           })}
         </div>
       </div>
-
-      <p className="text-xs text-charcoal-300 dark:text-charcoal-500 mt-3">
-        Pollen badge shows your relevant allergens only
-      </p>
     </div>
   );
 }

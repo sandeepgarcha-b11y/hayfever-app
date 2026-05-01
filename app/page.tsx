@@ -193,7 +193,7 @@ export default function Home() {
       {/* Leaf texture */}
       <LeafMotif />
 
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-4 sm:py-8">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 py-4 sm:py-8">
         {/* Header */}
         <header className="mb-3 sm:mb-7">
           <div className="flex items-start justify-between gap-3 sm:gap-4">
@@ -272,18 +272,26 @@ export default function Home() {
         )}
 
         {/* Cards — staggered entrance animation */}
-        <div className="space-y-4">
+        <div className="space-y-4 sm:space-y-5">
           <div className="card-enter" style={{ animationDelay: "0ms" }}>
-            <RecommendationCard recommendation={recommendation} />
+            <RecommendationCard
+              recommendation={recommendation}
+              weather={data.weather}
+              pollen={data.pollen}
+            />
           </div>
-          <div className="card-enter" style={{ animationDelay: "80ms" }}>
-            <WeatherCard weather={data.weather} />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="card-enter h-full" style={{ animationDelay: "80ms" }}>
+              <WeatherCard weather={data.weather} />
+            </div>
+            <div className="card-enter h-full" style={{ animationDelay: "120ms" }}>
+              <PollenCard pollen={data.pollen} />
+            </div>
           </div>
-          <div className="card-enter" style={{ animationDelay: "160ms" }}>
-            <PollenCard pollen={data.pollen} />
-          </div>
+
           {data.weeklyForecast && data.weeklyForecast.length > 0 && (
-            <div className="card-enter" style={{ animationDelay: "240ms" }}>
+            <div className="card-enter" style={{ animationDelay: "160ms" }}>
               <WeeklyOutlook forecasts={data.weeklyForecast} allergyProfile={allergyProfile} />
             </div>
           )}

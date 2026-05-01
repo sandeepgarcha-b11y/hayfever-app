@@ -32,7 +32,7 @@ export default function WeatherCard({ weather }: Props) {
   const uv = uvLabel(weather.uvIndex);
 
   return (
-    <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-6">
+    <div className="h-full bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-xs font-semibold text-charcoal-400 dark:text-charcoal-300 uppercase tracking-widest mb-1">
