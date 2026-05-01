@@ -1,4 +1,13 @@
-import type { WeatherData, PollenData, PollenLevel, Recommendation, ClothingItem, AllergyProfile } from "./types";
+import type {
+  AllergyProfile,
+  ClothingCategory,
+  ClothingItem,
+  ClothingPriority,
+  PollenData,
+  PollenLevel,
+  Recommendation,
+  WeatherData,
+} from "./types";
 
 export function getPollenLevel(value: number | null): PollenLevel {
   // Google Pollen API returns a Universal Pollen Index (UPI) on a 0–5 scale:
@@ -81,9 +90,14 @@ export function buildRecommendation(
   }
 
   const clothing: ClothingItem[] = [];
-  const addClothing = (item: ClothingItem) => {
+  const addClothing = (
+    item: Omit<ClothingItem, "category" | "priority"> & {
+      category: ClothingCategory;
+      priority?: ClothingPriority;
+    }
+  ) => {
     if (!clothing.some((existing) => existing.label === item.label)) {
-      clothing.push(item);
+      clothing.push({ priority: "secondary", ...item });
     }
   };
 
@@ -96,20 +110,20 @@ export function buildRecommendation(
 
   // Base outfit: choose the main layer by feels-like temperature, not just air temp.
   if (feelsLike <= 2) {
-    addClothing({ label: "Insulated coat", reason: `Feels like ${feelsLike}°C` });
-    addClothing({ label: "Hat, scarf & gloves", reason: "Cold exposure will build up quickly" });
+    addClothing({ label: "Insulated coat", reason: `Feels like ${feelsLike}°C`, category: "wear", priority: "primary" });
+    addClothing({ label: "Hat, scarf & gloves", reason: "Cold exposure will build up quickly", category: "protect" });
   } else if (feelsLike <= 8) {
-    addClothing({ label: "Warm coat", reason: `Feels like ${feelsLike}°C` });
-    addClothing({ label: "Warm mid-layer", reason: "Useful if you are outside for more than a short walk" });
+    addClothing({ label: "Warm coat", reason: `Feels like ${feelsLike}°C`, category: "wear", priority: "primary" });
+    addClothing({ label: "Warm mid-layer", reason: "Useful if you are outside for more than a short walk", category: "wear" });
   } else if (feelsLike <= 14) {
-    addClothing({ label: "Jacket or fleece", reason: `Cool feel at ${feelsLike}°C` });
+    addClothing({ label: "Jacket or fleece", reason: `Cool feel at ${feelsLike}°C`, category: "wear", priority: "primary" });
   } else if (feelsLike <= 20) {
-    addClothing({ label: "Light layers", reason: `Mild feel at ${feelsLike}°C` });
+    addClothing({ label: "Light layers", reason: `Mild feel at ${feelsLike}°C`, category: "wear", priority: "primary" });
   } else if (feelsLike <= 25) {
-    addClothing({ label: "Breathable top", reason: `Warm feel at ${feelsLike}°C` });
-    addClothing({ label: "Light layer to carry", reason: "Useful for shade, evening, or air conditioning" });
+    addClothing({ label: "Breathable top", reason: `Warm feel at ${feelsLike}°C`, category: "wear", priority: "primary" });
+    addClothing({ label: "Light layer", reason: "Useful for shade, evening, or air conditioning", category: "carry" });
   } else {
-    addClothing({ label: "Loose, breathable clothing", reason: `Hot feel at ${feelsLike}°C` });
+    addClothing({ label: "Loose, breathable clothing", reason: `Hot feel at ${feelsLike}°C`, category: "wear", priority: "primary" });
   }
 
   // Rain and ground conditions.
@@ -117,44 +131,51 @@ export function buildRecommendation(
     addClothing({
       label: "Waterproof outer layer",
       reason: `${rainChance}% chance of rain`,
+      category: "wear",
+      priority: "primary",
     });
-    addClothing({ label: "Water-resistant shoes", reason: "Likely wet ground and pavements" });
+    addClothing({ label: "Water-resistant shoes", reason: "Likely wet ground and pavements", category: "wear" });
   } else if (rainChance >= 40 || wetWeather) {
     addClothing({
       label: "Packable waterproof",
       reason: `${rainChance}% chance of rain`,
+      category: "carry",
+      priority: "primary",
     });
   } else if (rainChance >= 20) {
     addClothing({
       label: "Compact umbrella",
       reason: "Small rain risk, low commitment to carry",
+      category: "carry",
     });
   }
 
   if (snowOrIce) {
-    addClothing({ label: "Grip-friendly shoes", reason: "Snow or ice risk in the forecast" });
+    addClothing({ label: "Grip-friendly shoes", reason: "Snow or ice risk in the forecast", category: "wear" });
   }
 
   // Wind changes how warm the outfit feels and how much pollen moves around.
   if (strongWind) {
-    addClothing({ label: "Windproof outer layer", reason: `${weather.windSpeed} km/h winds` });
+    addClothing({ label: "Windproof outer layer", reason: `${weather.windSpeed} km/h winds`, category: "wear", priority: "primary" });
   } else if (windy) {
-    addClothing({ label: "Wind-resistant layer", reason: `${weather.windSpeed} km/h breeze` });
+    addClothing({ label: "Wind-resistant layer", reason: `${weather.windSpeed} km/h breeze`, category: "wear" });
   }
 
   // UV and pollen protection overlap around eyes, skin, and hair.
   if (weather.uvIndex >= 3 && maxPollenIndex >= 2) {
-    addClothing({ label: "Sunglasses", reason: "Helps with UV and keeps pollen out of your eyes" });
+    addClothing({ label: "Sunglasses", reason: "Helps with UV and keeps pollen out of your eyes", category: "protect", priority: "primary" });
   } else if (weather.uvIndex >= 3) {
-    addClothing({ label: "Sunglasses", reason: "UV index is moderate or higher" });
+    addClothing({ label: "Sunglasses", reason: "UV index is moderate or higher", category: "protect" });
   } else if (maxPollenIndex >= 2) {
-    addClothing({ label: "Glasses or sunglasses", reason: "Helps reduce pollen reaching your eyes" });
+    addClothing({ label: "Glasses or sunglasses", reason: "Helps reduce pollen reaching your eyes", category: "protect", priority: "primary" });
   }
 
   if (weather.uvIndex >= 6) {
     addClothing({
       label: "Sun hat & sunscreen",
       reason: `UV index is high (${weather.uvIndex})`,
+      category: "protect",
+      priority: "primary",
     });
   }
 
@@ -162,11 +183,13 @@ export function buildRecommendation(
     addClothing({
       label: "Long sleeves",
       reason: "High trigger pollen — reduces skin and fabric exposure",
+      category: "protect",
     });
   } else if (maxPollenIndex >= 2) {
     addClothing({
       label: "Smooth outer layer",
       reason: "Moderate trigger pollen — easier to shake off after being outside",
+      category: "protect",
     });
   }
 
@@ -174,6 +197,7 @@ export function buildRecommendation(
     addClothing({
       label: "Hat or tied-back hair",
       reason: "Wind can carry pollen into hair and around your face",
+      category: "protect",
     });
   }
 

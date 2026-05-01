@@ -16,10 +16,14 @@ export interface PollenData {
 }
 
 export type PollenLevel = "None" | "Low" | "Moderate" | "High" | "Very High";
+export type ClothingCategory = "wear" | "carry" | "protect";
+export type ClothingPriority = "primary" | "secondary";
 
 export interface ClothingItem {
   label: string;
   reason: string;
+  category?: ClothingCategory;
+  priority?: ClothingPriority;
 }
 
 export interface Recommendation {
