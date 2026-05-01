@@ -1,29 +1,20 @@
 {
-  "name": "hayfever-app",
+  "name": "hayfever",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.37.0",
-    "lucide-react": "^0.577.0",
-    "next": "14.2.35",
-    "react": "^18",
-    "react-dom": "^18"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.35",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "dev": "npm run dev:web",
+    "dev:web": "npm run build -w @hayfever/core && npm run dev -w @hayfever/web",
+    "dev:api": "npm run dev -w @hayfever/api",
+    "mobile": "npm run build -w @hayfever/core && npm run start -w @hayfever/mobile",
+    "build": "npm run build -w @hayfever/core && npm run build -w @hayfever/api && npm run build -w @hayfever/web && npm run typecheck -w @hayfever/mobile",
+    "build:web": "npm run build -w @hayfever/web",
+    "build:api": "npm run build -w @hayfever/api",
+    "lint": "npm run build -w @hayfever/core && npm run lint -w @hayfever/web && npm run typecheck -w @hayfever/api && npm run typecheck -w @hayfever/mobile",
+    "typecheck": "npm run typecheck -ws --if-present"
   }
 }

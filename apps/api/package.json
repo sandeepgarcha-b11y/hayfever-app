@@ -1,0 +1,26 @@
+{
+  "name": "@hayfever/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hayfever/core": "*",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "helmet": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5"
+  }
+}

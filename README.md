@@ -1,48 +1,53 @@
-# Hayfever Dashboard
+# Hayfever
 
-A personal weather and pollen dashboard that tells you whether to take an antihistamine and what to wear — built for people who care about going outside comfortably.
+An iOS-first allergy coach with a companion web dashboard and a small backend API for weather, pollen, and recommendation logic.
 
----
+## Workspace
 
-## What it does
+```text
+apps/
+  api/      Cloud Run backend for conditions data
+  mobile/   Expo React Native iOS app
+  web/      Existing Next.js dashboard
+packages/
+  core/     Shared types and recommendation rules
+```
 
-- Detects your location (or falls back to Ealing, London)
-- Shows current weather conditions: temperature, feels-like, UV, wind, rain probability
-- Shows real-time pollen levels for grass, tree, and weed with a visual scale
-- Recommends whether to take an antihistamine based on combined pollen load
-- Suggests what to wear for the day based on temperature and conditions
-- Supports dark mode with an earthy, classic feel
-
-## Data sources
-
-| Data | Source |
-|------|--------|
-| Weather | [Google Weather API](https://developers.google.com/maps/documentation/weather) |
-| Pollen | [Google Pollen API](https://developers.google.com/maps/documentation/pollen) |
-| Location name | [Nominatim / OpenStreetMap](https://nominatim.org) — reverse geocoding |
-
-## Tech stack
-
-- **Framework:** Next.js 14 (App Router)
-- **Styling:** Tailwind CSS with a custom earthy palette
-- **Language:** TypeScript
-
-## Running locally
+## Local Setup
 
 ```bash
 npm install
-npm run dev
 ```
 
-Create `.env.local` with `GOOGLE_MAPS_API_KEY` before loading live weather and pollen data.
+For the web app, create `apps/web/.env.local` with:
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+```bash
+GOOGLE_MAPS_API_KEY=...
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
 
-For a local production check:
+For the API app, set `GOOGLE_MAPS_API_KEY` in your shell or pass it from Google Secret Manager when deployed.
+
+## Development
+
+```bash
+npm run dev:web
+npm run dev:api
+npm run mobile
+```
+
+The mobile app reads `EXPO_PUBLIC_API_BASE_URL` when you want it to call a live backend. Without that value, it shows sample conditions so the UI can still be developed.
+
+## Checks
 
 ```bash
 npm run lint
 npm run build
 ```
 
-> Note: browser geolocation may be blocked on `localhost` depending on your OS/browser permissions. The app will automatically fall back to Ealing, London in that case.
+## Cloud Setup
+
+The Google Cloud project is `hayfever-ios-sg`.
+
+The production API key is stored in Secret Manager as `google-maps-api-key`, and the Cloud Run runtime service account is `hayfever-api-sa@hayfever-ios-sg.iam.gserviceaccount.com`.
