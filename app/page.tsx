@@ -297,40 +297,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Footer */}
-        <footer className="mt-10 text-center text-xs text-charcoal-300 dark:text-charcoal-500 space-y-1">
-          <p>
-            Weather data from{" "}
-            <a
-              href="https://developers.google.com/maps/documentation/weather"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
-            >
-              Google Weather API
-            </a>
-            {" · "}Pollen data from{" "}
-            <a
-              href="https://developers.google.com/maps/documentation/pollen"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
-            >
-              Google Pollen API
-            </a>
-          </p>
-          <p>
-            Location from browser geolocation · Reverse geocoding by{" "}
-            <a
-              href="https://nominatim.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-charcoal-500 dark:hover:text-charcoal-300"
-            >
-              Nominatim
-            </a>
-          </p>
-        </footer>
       </div>
 
       {/* Allergy profile setup modal */}
