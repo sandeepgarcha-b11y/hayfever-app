@@ -16,7 +16,8 @@
       "bundleIdentifier": "com.hayfever.sg",
       "supportsTablet": false,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Hayfever uses your location to show local weather and pollen conditions."
+        "NSLocationWhenInUseUsageDescription": "Hayfever uses your location to show local weather and pollen conditions.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
