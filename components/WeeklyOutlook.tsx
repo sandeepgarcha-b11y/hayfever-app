@@ -43,14 +43,16 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
   if (!forecasts || forecasts.length === 0) return null;
 
   const profile: AllergyProfile = allergyProfile ?? { grass: true, tree: true, weed: true };
+  const outlookLabel = forecasts.length === 1 ? "Today's Outlook" : `${forecasts.length}-Day Outlook`;
+
   return (
     <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-cream-400 dark:border-charcoal-600 p-6">
       <h2 className="text-xs font-semibold text-charcoal-400 dark:text-charcoal-300 uppercase tracking-widest mb-4">
-        7-Day Outlook
+        {outlookLabel}
       </h2>
 
       <div className="overflow-x-auto -mx-1 pb-1">
-        <div className="flex gap-2 min-w-max px-1">
+        <div className="flex gap-1.5 sm:gap-2 min-w-max px-1">
           {forecasts.map((forecast, i) => {
             const level = overallLevel(forecast, profile);
             const isToday = i === 0;
@@ -58,7 +60,7 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
             return (
               <div
                 key={forecast.date}
-                className={`flex flex-col items-center gap-2 px-3 py-3 rounded-xl min-w-[72px] ${
+                className={`flex flex-col items-center gap-2 px-2 sm:px-3 py-3 rounded-xl min-w-[56px] sm:min-w-[72px] ${
                   isToday
                     ? "bg-sage-50 dark:bg-sage-900/40 border border-sage-200 dark:border-sage-700"
                     : "bg-cream-100 dark:bg-charcoal-700"
@@ -74,7 +76,7 @@ export default function WeeklyOutlook({ forecasts, allergyProfile }: Props) {
                 <span className="text-sm font-semibold text-charcoal-800 dark:text-cream-200">
                   {forecast.maxTemp}°
                 </span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${BADGE[level]}`}>
+                <span className={`text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap ${BADGE[level]}`}>
                   {level}
                 </span>
               </div>

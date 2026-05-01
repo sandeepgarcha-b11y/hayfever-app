@@ -26,12 +26,94 @@
   }
 }
 
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 0.04;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.09;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes night-glow {
+  0%, 100% {
+    opacity: 0.05;
+  }
+  50% {
+    opacity: 0.10;
+  }
+}
+
+@keyframes rain-fall {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -80px 200px;
+  }
+}
+
+@keyframes mist-drift {
+  0% {
+    opacity: 0.04;
+    transform: translateX(-4%);
+  }
+  50% {
+    opacity: 0.08;
+    transform: translateX(4%);
+  }
+  100% {
+    opacity: 0.04;
+    transform: translateX(-4%);
+  }
+}
+
+@keyframes snow-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) translateX(0);
+  }
+  10%,
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(12px);
+  }
+}
+
+@keyframes pollen-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+  10%,
+  90% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-80vh) scale(0.7);
+  }
+}
+
 .card-enter {
   animation: fadeInUp 0.35s ease both;
 }
 
 .modal-enter {
   animation: scaleIn 0.2s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-enter,
+  .modal-enter,
+  .weather-motion {
+    animation: none !important;
+  }
 }
 
 @layer base {

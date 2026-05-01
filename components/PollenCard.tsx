@@ -81,7 +81,7 @@ export default function PollenCard({ pollen }: Props) {
       </div>
 
       <p className="text-xs text-charcoal-300 dark:text-charcoal-500 mt-5">
-        Pollen index sourced from Open-Meteo air quality data
+        Pollen index sourced from Google Pollen API data
       </p>
     </div>
   );

@@ -128,20 +128,20 @@ export default function LocationGate({ onData, onLocation, darkToggle }: Props) 
           {(state.status === "idle" || state.status === "error") && (
             <div className="flex flex-col items-center gap-3">
               <button
+                type="button"
                 onClick={requestLocation}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-sage-600 dark:bg-sage-700 text-white font-medium hover:bg-sage-700 dark:hover:bg-sage-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
               >
                 <MapPin className="w-4 h-4" />
                 {state.status === "error" ? "Try again" : "Use my location"}
               </button>
-              {state.status === "error" && (
-                <button
-                  onClick={() => fetchConditions(FALLBACK.lat, FALLBACK.lon, true)}
-                  className="text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 underline transition-colors"
-                >
-                  Use {FALLBACK.label} instead
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => fetchConditions(FALLBACK.lat, FALLBACK.lon, true)}
+                className="text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 underline transition-colors"
+              >
+                Use {FALLBACK.label} instead
+              </button>
             </div>
           )}
         </div>

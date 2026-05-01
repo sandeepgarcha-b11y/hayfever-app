@@ -14,7 +14,7 @@ export async function middleware(req: NextRequest) {
 
   // Dynamically import so the module only loads when credentials are present.
   const { Ratelimit } = await import("@upstash/ratelimit");
-  const { Redis }     = await import("@upstash/redis");
+  const { Redis }     = await import("@upstash/redis/cloudflare");
 
   const redis = new Redis({ url: redisUrl, token: redisToken });
 
@@ -26,7 +26,7 @@ export async function middleware(req: NextRequest) {
     prefix: "hayfever:rl",
   });
 
-  // Use the first IP in x-forwarded-for (set by Vercel) or fall back to a
+  // Use the first IP in x-forwarded-for (set by most hosting proxies) or fall back to a
   // generic key so the middleware doesn't break in local dev.
   const forwarded = req.headers.get("x-forwarded-for");
   const ip = forwarded ? forwarded.split(",")[0].trim() : "127.0.0.1";

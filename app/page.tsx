@@ -55,7 +55,9 @@ function LeafMotif() {
 function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
+      aria-pressed={dark}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
       className={`
         relative inline-flex items-center w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2
@@ -83,6 +85,7 @@ export default function Home() {
   const [allergyProfile, setAllergyProfile] = useState<AllergyProfile | null>(null);
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const coordsRef = useRef<{ lat: number; lon: number } | null>(null);
 
   // Initialise theme from localStorage on mount
@@ -121,6 +124,7 @@ export default function Home() {
     // If we have coords from the initial fetch, refresh in-place
     if (coordsRef.current) {
       setIsRefreshing(true);
+      setRefreshError(null);
       try {
         const { lat, lon } = coordsRef.current;
         const res = await fetch(`/api/conditions?lat=${lat}&lon=${lon}`);
@@ -129,13 +133,14 @@ export default function Home() {
         if (data?.usingFallbackLocation) newData.usingFallbackLocation = true;
         setData(newData);
       } catch {
-        // silently keep existing data on failure
+        setRefreshError("Couldn't refresh. Showing the last saved conditions.");
       } finally {
         setIsRefreshing(false);
       }
     } else {
       // No coords yet (initial load failed) — fall back to full remount
       setData(null);
+      setRefreshError(null);
       setRefreshKey((k) => k + 1);
     }
   }
@@ -191,8 +196,8 @@ export default function Home() {
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-4 sm:py-8">
         {/* Header */}
         <header className="mb-3 sm:mb-7">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="min-w-0 flex-1">
               {/* App identity eyebrow */}
               <div className="flex items-center gap-1 text-sage-500 dark:text-sage-500 text-[10px] font-semibold uppercase tracking-[0.15em] mb-1">
                 <Leaf className="w-2.5 h-2.5" />
@@ -220,11 +225,17 @@ export default function Home() {
                 {stale && <span className="inline-block w-1.5 h-1.5 rounded-full bg-clay-400 mr-1.5 align-middle" />}
                 {updatedLabel}
               </p>
+              {refreshError && (
+                <p className="mt-1 text-sm text-clay-600 dark:text-clay-300" role="status">
+                  {refreshError}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2 mt-1">
               {/* Allergens button — icon + label */}
               <button
+                type="button"
                 onClick={() => setShowProfileSetup(true)}
                 className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-charcoal-400 dark:text-charcoal-400 hover:text-sage-600 dark:hover:text-sage-400 hover:bg-sage-50 dark:hover:bg-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400"
                 aria-label="Edit allergy profile"
@@ -236,13 +247,14 @@ export default function Home() {
               <DarkModeToggle dark={dark} onToggle={toggleDark} />
 
               <button
+                type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="flex items-center gap-1.5 text-sm text-charcoal-400 dark:text-charcoal-300 hover:text-sage-600 dark:hover:text-sage-400 transition-colors px-3 py-2 rounded-lg hover:bg-sage-50 dark:hover:bg-charcoal-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 text-sm text-charcoal-400 dark:text-charcoal-300 hover:text-sage-600 dark:hover:text-sage-400 transition-colors px-2.5 sm:px-3 py-2 rounded-lg hover:bg-sage-50 dark:hover:bg-charcoal-700 disabled:opacity-50"
                 aria-label="Refresh conditions"
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>

@@ -36,13 +36,18 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
       <div className="absolute inset-0 bg-charcoal-900/50 backdrop-blur-sm" aria-hidden="true" />
 
       {/* Card */}
-      <div className="modal-enter relative w-full max-w-sm bg-[var(--card)] rounded-2xl shadow-xl border border-cream-400 dark:border-charcoal-600 p-7">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="allergy-profile-title"
+        className="modal-enter relative w-full max-w-[min(24rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto bg-[var(--card)] rounded-2xl shadow-xl border border-cream-400 dark:border-charcoal-600 p-6 sm:p-7"
+      >
         {/* Icon + heading */}
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 rounded-xl bg-sage-100 dark:bg-sage-900">
             <Leaf className="w-5 h-5 text-sage-600 dark:text-sage-400" />
           </div>
-          <h2 className="text-lg font-semibold text-charcoal-800 dark:text-cream-200">
+          <h2 id="allergy-profile-title" className="text-lg font-semibold text-charcoal-800 dark:text-cream-200">
             Your allergy profile
           </h2>
         </div>
@@ -57,8 +62,10 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
             const selected = profile[key];
             return (
               <button
+                type="button"
                 key={key}
                 onClick={() => toggle(key)}
+                aria-pressed={selected}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border text-left transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-1 ${
                   selected
                     ? "bg-sage-50 dark:bg-sage-900/60 border-sage-400 dark:border-sage-600"
@@ -81,12 +88,14 @@ export default function AllergyProfileSetup({ initial, onSave }: Props) {
 
         {/* Actions */}
         <button
+          type="button"
           onClick={handleSave}
           className="w-full py-3 rounded-xl bg-sage-600 dark:bg-sage-700 text-white font-semibold text-sm hover:bg-sage-700 dark:hover:bg-sage-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sage-400 focus:ring-offset-2"
         >
           Save preferences
         </button>
         <button
+          type="button"
           onClick={() => onSave({ grass: true, tree: true, weed: true })}
           className="w-full mt-3 text-sm text-charcoal-400 dark:text-charcoal-400 hover:text-charcoal-600 dark:hover:text-charcoal-200 transition-colors"
         >
