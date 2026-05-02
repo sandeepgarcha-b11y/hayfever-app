@@ -15,8 +15,28 @@ import type {
   PollenLevel,
 } from "@hayfever/core";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  CheckCircle2,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
+  Droplets,
+  Leaf,
+  MapPin,
+  Pill,
+  RefreshCw,
+  Shirt,
+  SlidersHorizontal,
+  Sun,
+  Thermometer,
+  Umbrella,
+  Wind,
+  Zap,
+} from "lucide-react-native";
 import {
   ActivityIndicator,
   Pressable,
@@ -98,12 +118,63 @@ const SAMPLE_CONDITIONS: ConditionsResponse = {
   ],
 };
 
-const RISK_TONE: Record<PollenLevel, { background: string; border: string; text: string; accent: string }> = {
-  None: { background: "#eef3ee", border: "#d9e4dc", text: "#2e4c3b", accent: "#5d856d" },
-  Low: { background: "#eef3ee", border: "#d9e4dc", text: "#2e4c3b", accent: "#5d856d" },
-  Moderate: { background: "#fff4df", border: "#efd6aa", text: "#6d481a", accent: "#d78a2f" },
-  High: { background: "#ffece6", border: "#edbfaf", text: "#7a3425", accent: "#c55a3f" },
-  "Very High": { background: "#f7e9ee", border: "#e7bac9", text: "#713145", accent: "#b84d6d" },
+const RISK_TONE: Record<
+  PollenLevel,
+  {
+    background: string;
+    border: string;
+    text: string;
+    accent: string;
+    hero: [string, string];
+    track: string;
+    progress: number;
+  }
+> = {
+  None: {
+    background: "#eef3ee",
+    border: "#d9e4dc",
+    text: "#2e4c3b",
+    accent: "#5d856d",
+    hero: ["#fefcf8", "#eaf2eb"],
+    track: "#e8e6e3",
+    progress: 0,
+  },
+  Low: {
+    background: "#e4ece4",
+    border: "#c6d9c7",
+    text: "#3b5240",
+    accent: "#5c7a5f",
+    hero: ["#fefcf8", "#e4ece4"],
+    track: "#e8e6e3",
+    progress: 0.25,
+  },
+  Moderate: {
+    background: "#faeade",
+    border: "#f4d0b5",
+    text: "#854a28",
+    accent: "#c97a45",
+    hero: ["#fffaf3", "#faeade"],
+    track: "#f0dfcf",
+    progress: 0.5,
+  },
+  High: {
+    background: "#f4d0b5",
+    border: "#ecb188",
+    text: "#5e331c",
+    accent: "#a86035",
+    hero: ["#fff4ec", "#f4d0b5"],
+    track: "#ecd2bd",
+    progress: 0.75,
+  },
+  "Very High": {
+    background: "#f4d0b5",
+    border: "#c97a45",
+    text: "#3d2011",
+    accent: "#854a28",
+    hero: ["#fff0e2", "#ecb188"],
+    track: "#e7c0a2",
+    progress: 1,
+  },
 };
 
 function normaliseProfile(profile: Partial<AllergyProfile>): AllergyProfile {
@@ -162,6 +233,27 @@ function formatForecastDay(date: string, index: number) {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(parsed);
 }
 
+function formatToday() {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+}
+
+function compassDirection(deg: number) {
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function uvLabel(uv: number) {
+  if (uv <= 2) return "Low";
+  if (uv <= 5) return "Moderate";
+  if (uv <= 7) return "High";
+  if (uv <= 10) return "Very high";
+  return "Extreme";
+}
+
 function inferCategory(item: ClothingItem): ClothingCategory {
   if (item.category) return item.category;
   const label = item.label.toLowerCase();
@@ -207,7 +299,7 @@ function getStateCopy(state: DataState, conditions: ConditionsResponse) {
   if (state === "live") {
     return {
       label: "Live",
-      detail: `${conditions.locationName} / ${formatUpdated(conditions.fetchedAt)}`,
+      detail: `Updated ${formatUpdated(conditions.fetchedAt)}`,
       tone: styles.statusLive,
     };
   }
@@ -249,6 +341,135 @@ function getStateCopy(state: DataState, conditions: ConditionsResponse) {
     detail: "Live API not configured",
     tone: styles.statusNeutral,
   };
+}
+
+function WeatherIcon({ code, color = "#c97a45", size = 22 }: { code: number; color?: string; size?: number }) {
+  if (code <= 1) return <Sun size={size} color={color} strokeWidth={2.2} />;
+  if (code <= 3) return <Cloud size={size} color={color} strokeWidth={2.2} />;
+  if (code <= 69) return <CloudRain size={size} color={color} strokeWidth={2.2} />;
+  if (code <= 79) return <CloudSnow size={size} color={color} strokeWidth={2.2} />;
+  if (code <= 84) return <CloudRain size={size} color={color} strokeWidth={2.2} />;
+  return <Zap size={size} color={color} strokeWidth={2.2} />;
+}
+
+function getWeatherMood(weatherCode: number, isDay: number): {
+  gradient: [string, string];
+  glow: string;
+  accent: string;
+} {
+  if (isDay === 0) return { gradient: ["#f0ebe0", "#dfe7df"], glow: "#5a5249", accent: "#8e867c" };
+  if (weatherCode <= 1) return { gradient: ["#f7f4ef", "#fdf6f0"], glow: "#f4d0b5", accent: "#e09060" };
+  if (weatherCode >= 45 && weatherCode <= 69) {
+    return { gradient: ["#f7f4ef", "#e8ece5"], glow: "#c6d9c7", accent: "#8e867c" };
+  }
+  return { gradient: ["#f7f4ef", "#edf2ec"], glow: "#d6cbba", accent: "#5c7a5f" };
+}
+
+function AmbientBackground({
+  weatherCode,
+  isDay,
+  highPollen,
+}: {
+  weatherCode: number;
+  isDay: number;
+  highPollen: boolean;
+}) {
+  const mood = getWeatherMood(weatherCode, isDay);
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <LinearGradient colors={mood.gradient} style={StyleSheet.absoluteFillObject} />
+      <View style={[styles.ambientGlow, styles.ambientGlowTop, { backgroundColor: mood.glow }]} />
+      <View style={[styles.ambientGlow, styles.ambientGlowSide, { backgroundColor: "#c6d9c7" }]} />
+      <View style={[styles.leafMotif, styles.leafMotifOne]}>
+        <Leaf size={120} color="#5c7a5f" strokeWidth={1.2} />
+      </View>
+      <View style={[styles.leafMotif, styles.leafMotifTwo]}>
+        <Leaf size={92} color={mood.accent} strokeWidth={1.2} />
+      </View>
+      {highPollen ? (
+        <View style={styles.pollenDust}>
+          {[0, 1, 2, 3, 4].map((dot) => (
+            <View
+              key={dot}
+              style={[
+                styles.pollenDot,
+                {
+                  left: `${12 + dot * 18}%`,
+                  top: dot % 2 === 0 ? 12 : 34,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function IconBadge({
+  children,
+  backgroundColor,
+  borderColor,
+}: {
+  children: ReactNode;
+  backgroundColor: string;
+  borderColor?: string;
+}) {
+  return (
+    <View style={[styles.iconBadge, { backgroundColor, borderColor: borderColor ?? "rgba(255,255,255,0.7)" }]}>
+      {children}
+    </View>
+  );
+}
+
+function SummaryStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <View style={styles.summaryStat}>
+      <View style={styles.summaryStatLabelRow}>
+        {icon}
+        <Text style={styles.summaryStatLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      <Text style={styles.summaryStatValue} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function PollenProgressRow({
+  label,
+  detail,
+  value,
+  tracked,
+}: {
+  label: string;
+  detail: string;
+  value: number | null;
+  tracked: boolean;
+}) {
+  const level = getPollenLevel(value);
+  const tone = RISK_TONE[level];
+
+  return (
+    <View style={[styles.pollenProgressRow, tracked ? null : styles.pollenRowMuted]}>
+      <View style={styles.pollenProgressTop}>
+        <View style={styles.pollenProgressCopy}>
+          <Text style={styles.rowTitle}>{label}</Text>
+          <Text style={styles.mutedText}>{tracked ? detail : "Not in your allergy profile"}</Text>
+        </View>
+        <Text style={[styles.inlineBadge, { color: tone.text, backgroundColor: tone.background }]}>
+          {level}
+          {value !== null && value > 0 ? ` ${Math.round(value)}` : ""}
+        </Text>
+      </View>
+      <View style={[styles.progressTrack, { backgroundColor: tone.track }]}>
+        <View style={[styles.progressFill, { backgroundColor: tone.accent, width: `${tone.progress * 100}%` }]} />
+      </View>
+    </View>
+  );
 }
 
 function TriggerSelector({
@@ -320,12 +541,27 @@ function OnboardingScreen({
 function ClothingSection({ title, items }: { title: string; items: ClothingItem[] }) {
   if (!items.length) return null;
 
+  const isCarry = title === "Carry";
+  const isProtect = title === "Protect";
+  const icon = isCarry ? (
+    <Umbrella size={17} color="#854a28" strokeWidth={2.3} />
+  ) : isProtect ? (
+    <CheckCircle2 size={17} color="#5c7a5f" strokeWidth={2.3} />
+  ) : (
+    <Shirt size={17} color="#5c7a5f" strokeWidth={2.3} />
+  );
+
   return (
     <View style={styles.clothingSection}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionHeaderRow}>
+        <IconBadge backgroundColor={isCarry ? "#faeade" : "#e4ece4"} borderColor={isCarry ? "#f4d0b5" : "#c6d9c7"}>
+          {icon}
+        </IconBadge>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       {items.map((item) => (
-        <View key={`${title}-${item.label}`} style={styles.clothingItem}>
-          <View style={item.priority === "primary" ? styles.priorityDot : styles.secondaryDot} />
+        <View key={`${title}-${item.label}`} style={[styles.clothingItem, item.priority === "primary" ? styles.primaryClothingItem : null]}>
+          <View style={[styles.priorityDot, item.priority === "primary" ? null : styles.secondaryDot]} />
           <View style={styles.clothingText}>
             <Text style={styles.rowTitle}>{item.label}</Text>
             <Text style={styles.mutedText}>{item.reason}</Text>
@@ -354,9 +590,13 @@ function ForecastStrip({
       {forecast.slice(0, 5).map((day, index) => {
         const risk = getTriggerRisk(day, profile);
         const tone = RISK_TONE[risk.level];
+        const forecastGradient: [string, string] = index === 0 ? tone.hero : ["#fefcf8", "#faf7f0"];
         return (
-          <View key={day.date} style={styles.forecastDay}>
-            <Text style={styles.forecastDate}>{formatForecastDay(day.date, index)}</Text>
+          <LinearGradient key={day.date} colors={forecastGradient} style={[styles.forecastDay, { borderColor: index === 0 ? tone.border : "#e5ddd0" }]}>
+            <View style={styles.forecastTopRow}>
+              <Text style={styles.forecastDate}>{formatForecastDay(day.date, index)}</Text>
+              <WeatherIcon code={day.weatherCode} size={18} color="#c97a45" />
+            </View>
             <Text style={styles.forecastTemp}>{day.maxTemp}°</Text>
             <Text style={styles.forecastWeather} numberOfLines={1}>
               {getWeatherDescription(day.weatherCode)}
@@ -364,7 +604,7 @@ function ForecastStrip({
             <View style={[styles.forecastBadge, { backgroundColor: tone.background, borderColor: tone.border }]}>
               <Text style={[styles.forecastBadgeText, { color: tone.text }]}>{risk.level}</Text>
             </View>
-          </View>
+          </LinearGradient>
         );
       })}
     </ScrollView>
@@ -495,26 +735,58 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
+      <AmbientBackground
+        weatherCode={conditions.weather.weatherCode}
+        isDay={conditions.weather.isDay}
+        highPollen={triggerRisk.index >= 3}
+      />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>Hayfever</Text>
+          <View style={styles.headerCopy}>
+            <View style={styles.brandRow}>
+              <Leaf size={14} color="#5c7a5f" strokeWidth={2.4} />
+              <Text style={styles.brand}>Hayfever</Text>
+            </View>
+            <View style={styles.locationRow}>
+              <MapPin size={14} color="#706860" strokeWidth={2.2} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {conditions.locationName}
+              </Text>
+            </View>
             <Text style={styles.title}>Today</Text>
+            <Text style={styles.dateText}>{formatToday()}</Text>
           </View>
-          <Pressable style={styles.secondaryButton} onPress={() => setProfileOpen((open) => !open)}>
-            <Text style={styles.secondaryButtonText}>{profileOpen ? "Done" : "Triggers"}</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
+              {dataState === "loading" ? (
+                <ActivityIndicator color="#5c7a5f" />
+              ) : (
+                <RefreshCw size={19} color="#5c7a5f" strokeWidth={2.4} />
+              )}
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => setProfileOpen((open) => !open)}>
+              <SlidersHorizontal size={16} color="#5c7a5f" strokeWidth={2.4} />
+              <Text style={styles.secondaryButtonText}>{profileOpen ? "Done" : "Triggers"}</Text>
+            </Pressable>
+          </View>
         </View>
 
         {profileOpen ? (
           <View style={styles.card}>
-            <Text style={styles.cardLabel}>Allergy profile</Text>
-            <Text style={styles.cardTitle}>Relevant pollens only</Text>
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={styles.cardLabel}>Allergy profile</Text>
+                <Text style={styles.cardTitle}>Relevant pollens only</Text>
+              </View>
+              <IconBadge backgroundColor="#e4ece4" borderColor="#c6d9c7">
+                <SlidersHorizontal size={18} color="#5c7a5f" strokeWidth={2.4} />
+              </IconBadge>
+            </View>
             <TriggerSelector profile={profile} values={conditions.pollen} onToggle={toggleTrigger} compact />
           </View>
         ) : null}
 
-        <View style={[styles.heroCard, { backgroundColor: riskTone.background, borderColor: riskTone.border }]}>
+        <LinearGradient colors={riskTone.hero} style={[styles.heroCard, { borderColor: riskTone.border }]}>
           <View style={styles.heroTopRow}>
             <View style={[styles.statusPill, status.tone]}>
               {dataState === "loading" ? <ActivityIndicator size="small" color="#315242" /> : null}
@@ -523,70 +795,142 @@ export default function App() {
             <Text style={styles.updatedText}>{status.detail}</Text>
           </View>
 
-          <Text style={[styles.riskLabel, { color: riskTone.text }]}>
-            {triggerRisk.level === "None" ? "No trigger pollen" : `${triggerRisk.level} ${triggerRisk.dominant.label.toLowerCase()} pollen`}
-          </Text>
-          <Text style={styles.decision}>
-            {personalisedRecommendation.antihistamine ? "Take antihistamine today" : "No antihistamine needed"}
-          </Text>
-          <Text style={styles.bodyText}>{personalisedRecommendation.antihistamineReason}</Text>
-
-          <View style={styles.heroMetrics}>
-            <View style={styles.heroMetric}>
-              <Text style={styles.metricLabel}>Feels</Text>
-              <Text style={styles.metricValue}>{conditions.weather.feelsLike}°</Text>
-            </View>
-            <View style={styles.heroMetric}>
-              <Text style={styles.metricLabel}>Rain</Text>
-              <Text style={styles.metricValue}>{conditions.weather.precipitationProbability}%</Text>
-            </View>
-            <View style={styles.heroMetric}>
-              <Text style={styles.metricLabel}>Wind</Text>
-              <Text style={styles.metricValue}>{conditions.weather.windSpeed}</Text>
+          <View style={styles.planIntro}>
+            <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
+              <Pill size={23} color={riskTone.accent} strokeWidth={2.35} />
+            </IconBadge>
+            <View style={styles.planCopy}>
+              <Text style={[styles.riskLabel, { color: riskTone.text }]}>
+                {triggerRisk.level === "None" ? "No trigger pollen" : `${triggerRisk.level} ${triggerRisk.dominant.label.toLowerCase()} pollen`}
+              </Text>
+              <Text style={styles.decision}>
+                {personalisedRecommendation.antihistamine ? "Take an antihistamine" : "No antihistamine needed"}
+              </Text>
             </View>
           </View>
+          <Text style={styles.bodyText}>{personalisedRecommendation.antihistamineReason}</Text>
 
-          <Pressable style={styles.primaryButton} onPress={refresh} disabled={dataState === "loading"}>
-            {dataState === "loading" ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Refresh local conditions</Text>
-            )}
-          </Pressable>
+          <View style={styles.nowPanel}>
+            <Text style={styles.panelLabel}>Right now</Text>
+            <View style={styles.summaryGrid}>
+              <SummaryStat
+                icon={<Leaf size={15} color={riskTone.accent} strokeWidth={2.3} />}
+                label="Triggers"
+                value={triggerRisk.level}
+              />
+              <SummaryStat
+                icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
+                label={getWeatherDescription(conditions.weather.weatherCode)}
+                value={`${conditions.weather.temperature}°C`}
+              />
+              <SummaryStat
+                icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
+                label="Rain"
+                value={`${conditions.weather.precipitationProbability}%`}
+              />
+              <SummaryStat
+                icon={<Wind size={15} color="#706860" strokeWidth={2.3} />}
+                label="Wind"
+                value={`${conditions.weather.windSpeed} km/h`}
+              />
+            </View>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.weatherCard}>
+          <View style={styles.weatherCardTop}>
+            <View>
+              <Text style={styles.cardLabel}>Weather</Text>
+              <Text style={styles.cardTitle}>{getWeatherDescription(conditions.weather.weatherCode)}</Text>
+            </View>
+            <IconBadge backgroundColor="#faeade" borderColor="#f4d0b5">
+              <WeatherIcon code={conditions.weather.weatherCode} size={24} color="#c97a45" />
+            </IconBadge>
+          </View>
+          <View style={styles.temperatureRow}>
+            <Text style={styles.temperatureValue}>{conditions.weather.temperature}°</Text>
+            <View style={styles.temperatureMeta}>
+              <Text style={styles.temperatureUnit}>C</Text>
+              <Text style={styles.mutedText}>Feels like {conditions.weather.feelsLike}°C</Text>
+            </View>
+          </View>
+          <View style={styles.weatherStatsGrid}>
+            <SummaryStat
+              icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
+              label="Rain chance"
+              value={`${conditions.weather.precipitationProbability}%`}
+            />
+            <SummaryStat
+              icon={<Wind size={15} color="#706860" strokeWidth={2.3} />}
+              label="Wind"
+              value={`${conditions.weather.windSpeed} km/h ${compassDirection(conditions.weather.windDirection)}`}
+            />
+            <SummaryStat
+              icon={<Sun size={15} color="#c97a45" strokeWidth={2.3} />}
+              label="UV index"
+              value={`${conditions.weather.uvIndex} ${uvLabel(conditions.weather.uvIndex)}`}
+            />
+            <SummaryStat
+              icon={<Thermometer size={15} color="#c97a45" strokeWidth={2.3} />}
+              label="Feels"
+              value={`${conditions.weather.feelsLike}°C`}
+            />
+          </View>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View>
-              <Text style={styles.cardLabel}>Trigger pollen</Text>
-              <Text style={styles.cardTitle}>What matters today</Text>
+              <Text style={styles.cardLabel}>Pollen</Text>
+              <Text style={styles.cardTitle}>Trigger level</Text>
             </View>
-            <Text style={[styles.inlineBadge, { color: riskTone.text, backgroundColor: riskTone.background }]}>
-              {triggerRisk.level}
-            </Text>
+            <View style={styles.cardHeaderRight}>
+              <Text style={[styles.inlineBadge, { color: riskTone.text, backgroundColor: riskTone.background }]}>
+                {triggerRisk.level}
+              </Text>
+              <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
+                <Leaf size={18} color={riskTone.accent} strokeWidth={2.4} />
+              </IconBadge>
+            </View>
           </View>
-          {triggerRisk.activeRows.map((row) => (
-            <View key={row.key} style={styles.pollenRow}>
-              <View>
-                <Text style={styles.rowTitle}>{row.label}</Text>
-                <Text style={styles.mutedText}>{row.detail}</Text>
-              </View>
-              <Text style={styles.pollenValue}>{row.level}</Text>
-            </View>
-          ))}
+          <View style={styles.pollenProgressList}>
+            {TRIGGER_COPY.map((row) => (
+              <PollenProgressRow
+                key={row.key}
+                label={`${row.label} pollen`}
+                detail={row.detail}
+                value={getPollenValue(conditions.pollen, row.key)}
+                tracked={profile[row.key]}
+              />
+            ))}
+          </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Outfit</Text>
-          <Text style={styles.cardTitle}>What to wear outside</Text>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.cardLabel}>Outdoors checklist</Text>
+              <Text style={styles.cardTitle}>What to wear outside</Text>
+            </View>
+            <IconBadge backgroundColor="#e4ece4" borderColor="#c6d9c7">
+              <Shirt size={18} color="#5c7a5f" strokeWidth={2.4} />
+            </IconBadge>
+          </View>
           <ClothingSection title="Wear" items={clothingGroups.wear} />
           <ClothingSection title="Carry" items={clothingGroups.carry} />
           <ClothingSection title="Protect" items={clothingGroups.protect} />
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>5-day outlook</Text>
-          <Text style={styles.cardTitle}>Plan the week</Text>
+          <View style={styles.cardHeader}>
+            <View>
+              <Text style={styles.cardLabel}>5-day outlook</Text>
+              <Text style={styles.cardTitle}>Plan the week</Text>
+            </View>
+            <IconBadge backgroundColor="#faeade" borderColor="#f4d0b5">
+              <CloudSun size={18} color="#c97a45" strokeWidth={2.4} />
+            </IconBadge>
+          </View>
           <ForecastStrip forecast={conditions.weeklyForecast ?? []} profile={profile} />
         </View>
       </ScrollView>
@@ -597,7 +941,55 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f4f7f2",
+    backgroundColor: "#f7f4ef",
+  },
+  ambientGlow: {
+    borderRadius: 999,
+    opacity: 0.42,
+    position: "absolute",
+  },
+  ambientGlowTop: {
+    height: 260,
+    left: -80,
+    top: -130,
+    width: 520,
+  },
+  ambientGlowSide: {
+    height: 240,
+    opacity: 0.2,
+    right: -130,
+    top: 260,
+    width: 300,
+  },
+  leafMotif: {
+    opacity: 0.045,
+    position: "absolute",
+  },
+  leafMotifOne: {
+    right: -32,
+    top: 120,
+    transform: [{ rotate: "28deg" }],
+  },
+  leafMotifTwo: {
+    bottom: 110,
+    left: -30,
+    transform: [{ rotate: "-22deg" }],
+  },
+  pollenDust: {
+    height: 56,
+    left: 0,
+    opacity: 0.5,
+    position: "absolute",
+    right: 0,
+    top: 104,
+  },
+  pollenDot: {
+    backgroundColor: "#ecb188",
+    borderRadius: 4,
+    height: 8,
+    opacity: 0.5,
+    position: "absolute",
+    width: 8,
   },
   loadingScreen: {
     alignItems: "center",
@@ -611,57 +1003,96 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 12,
+    gap: 16,
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 40,
   },
   header: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    paddingTop: 10,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  brandRow: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 8,
+    gap: 6,
+    marginBottom: 8,
+  },
+  locationRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+    marginBottom: 4,
+  },
+  locationText: {
+    color: "#706860",
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  headerActions: {
+    alignItems: "flex-end",
+    gap: 8,
   },
   brand: {
-    color: "#2f6f5e",
-    fontSize: 13,
+    color: "#5c7a5f",
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 1.1,
+    letterSpacing: 2.2,
     textTransform: "uppercase",
   },
   title: {
-    color: "#1f2a24",
-    fontSize: 32,
-    fontWeight: "800",
-    marginTop: 2,
+    color: "#2d2926",
+    fontSize: 42,
+    fontWeight: "900",
+    letterSpacing: -0.2,
+    lineHeight: 46,
+  },
+  dateText: {
+    color: "#8e867c",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 4,
   },
   onboardingTitle: {
-    color: "#1f2a24",
+    color: "#2d2926",
     fontSize: 34,
     fontWeight: "800",
     lineHeight: 40,
     marginTop: 10,
   },
   onboardingCopy: {
-    color: "#59675f",
+    color: "#706860",
     fontSize: 16,
     lineHeight: 23,
     marginTop: 10,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#dfe7df",
-    borderRadius: 8,
+    backgroundColor: "#fefcf8",
+    borderColor: "#e5ddd0",
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 14,
-    shadowColor: "#1f2a24",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
+    padding: 18,
+    shadowColor: "#2d2926",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
   },
   heroCard: {
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 15,
+    overflow: "hidden",
+    padding: 18,
+    shadowColor: "#2d2926",
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
   },
   heroTopRow: {
     alignItems: "center",
@@ -671,87 +1102,118 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 14,
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   statusLive: {
-    backgroundColor: "#dfeee6",
+    backgroundColor: "#e4ece4",
   },
   statusWarning: {
-    backgroundColor: "#fff0d6",
+    backgroundColor: "#faeade",
   },
   statusError: {
-    backgroundColor: "#f7dedd",
+    backgroundColor: "#f4d0b5",
   },
   statusNeutral: {
-    backgroundColor: "#e8ece5",
+    backgroundColor: "#e8e6e3",
   },
   statusPillText: {
-    color: "#315242",
+    color: "#3b5240",
     fontSize: 12,
     fontWeight: "800",
   },
   updatedText: {
-    color: "#526159",
+    color: "#706860",
     flex: 1,
     fontSize: 12,
     lineHeight: 16,
     textAlign: "right",
   },
+  planIntro: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+  },
+  planCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
   riskLabel: {
     fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.4,
-    marginTop: 18,
+    letterSpacing: 1.5,
     textTransform: "uppercase",
   },
   decision: {
-    color: "#1f2a24",
-    fontSize: 28,
+    color: "#2d2926",
+    fontSize: 31,
     fontWeight: "900",
-    lineHeight: 32,
-    marginTop: 8,
+    lineHeight: 35,
+    marginTop: 7,
   },
   bodyText: {
-    color: "#435249",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
+    color: "#5a5249",
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 12,
   },
-  heroMetrics: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
-  },
-  heroMetric: {
-    backgroundColor: "rgba(255,255,255,0.58)",
-    borderColor: "rgba(49,82,66,0.12)",
-    borderRadius: 8,
+  nowPanel: {
+    backgroundColor: "rgba(254,252,248,0.72)",
+    borderColor: "rgba(255,255,255,0.78)",
+    borderRadius: 18,
     borderWidth: 1,
-    flex: 1,
-    padding: 10,
+    marginTop: 18,
+    padding: 12,
   },
-  metricLabel: {
-    color: "#627068",
-    fontSize: 12,
+  panelLabel: {
+    color: "#8e867c",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.4,
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  summaryStat: {
+    backgroundColor: "rgba(254,252,248,0.86)",
+    borderRadius: 14,
+    flexBasis: "48%",
+    flexGrow: 1,
+    minHeight: 70,
+    padding: 11,
+  },
+  summaryStatLabelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  summaryStatLabel: {
+    color: "#706860",
+    flex: 1,
+    fontSize: 11,
     fontWeight: "700",
   },
-  metricValue: {
-    color: "#1f2a24",
-    fontSize: 22,
+  summaryStatValue: {
+    color: "#2d2926",
+    fontSize: 18,
     fontWeight: "900",
-    marginTop: 3,
+    marginTop: 8,
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#2f6f5e",
-    borderRadius: 8,
+    backgroundColor: "#5c7a5f",
+    borderRadius: 14,
     justifyContent: "center",
     marginTop: 14,
-    minHeight: 46,
+    minHeight: 50,
     paddingHorizontal: 16,
   },
   primaryButtonText: {
@@ -760,17 +1222,46 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   secondaryButton: {
-    backgroundColor: "#ffffff",
-    borderColor: "#dfe7df",
-    borderRadius: 8,
+    alignItems: "center",
+    backgroundColor: "#fefcf8",
+    borderColor: "#e5ddd0",
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    flexDirection: "row",
+    gap: 7,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    shadowColor: "#2d2926",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
   },
   secondaryButtonText: {
-    color: "#2f6f5e",
+    color: "#5c7a5f",
     fontSize: 13,
     fontWeight: "800",
+  },
+  iconButton: {
+    alignItems: "center",
+    backgroundColor: "#fefcf8",
+    borderColor: "#e5ddd0",
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    shadowColor: "#2d2926",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    width: 44,
+  },
+  iconBadge: {
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   cardHeader: {
     alignItems: "flex-start",
@@ -778,152 +1269,231 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "space-between",
   },
+  cardHeaderRight: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
   cardLabel: {
-    color: "#748078",
+    color: "#8e867c",
     fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.8,
+    letterSpacing: 1.8,
     textTransform: "uppercase",
   },
   cardTitle: {
-    color: "#1f2a24",
-    fontSize: 18,
+    color: "#2d2926",
+    fontSize: 21,
     fontWeight: "800",
-    lineHeight: 23,
-    marginTop: 4,
+    lineHeight: 26,
+    marginTop: 5,
   },
   inlineBadge: {
-    borderRadius: 8,
+    borderRadius: 999,
     fontSize: 12,
     fontWeight: "800",
     overflow: "hidden",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  weatherCard: {
+    backgroundColor: "#fefcf8",
+    borderColor: "#e5ddd0",
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 18,
+    shadowColor: "#2d2926",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+  },
+  weatherCardTop: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  temperatureRow: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 18,
+  },
+  temperatureValue: {
+    color: "#2d2926",
+    fontSize: 62,
+    fontWeight: "300",
+    letterSpacing: -1,
+    lineHeight: 66,
+  },
+  temperatureMeta: {
+    paddingBottom: 10,
+  },
+  temperatureUnit: {
+    color: "#8e867c",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  weatherStatsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 16,
   },
   triggerList: {
     gap: 10,
   },
   triggerListCompact: {
-    gap: 7,
-    marginTop: 12,
+    gap: 9,
+    marginTop: 16,
   },
   triggerRow: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderColor: "#dfe7df",
-    borderRadius: 8,
+    backgroundColor: "#faf7f0",
+    borderColor: "#e5ddd0",
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    padding: 12,
+    padding: 13,
   },
   triggerRowActive: {
-    backgroundColor: "#edf6ef",
-    borderColor: "#bfd9c8",
+    backgroundColor: "#e4ece4",
+    borderColor: "#c6d9c7",
   },
   triggerText: {
     flex: 1,
   },
-  pollenRow: {
-    alignItems: "center",
-    borderBottomColor: "#edf1eb",
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 11,
+  pollenProgressList: {
+    gap: 15,
+    marginTop: 18,
   },
-  pollenValue: {
-    color: "#1f2a24",
-    fontSize: 14,
-    fontWeight: "800",
+  pollenProgressRow: {
+    gap: 9,
+  },
+  pollenProgressTop: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  pollenProgressCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pollenRowMuted: {
+    opacity: 0.55,
+  },
+  progressTrack: {
+    borderRadius: 999,
+    height: 7,
+    overflow: "hidden",
+  },
+  progressFill: {
+    borderRadius: 999,
+    height: "100%",
   },
   rowTitle: {
-    color: "#1f2a24",
-    fontSize: 15,
+    color: "#2d2926",
+    fontSize: 16,
     fontWeight: "800",
   },
   mutedText: {
-    color: "#637168",
+    color: "#706860",
     fontSize: 13,
     lineHeight: 18,
     marginTop: 3,
   },
   clothingSection: {
-    marginTop: 14,
+    marginTop: 18,
+  },
+  sectionHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 9,
+    marginBottom: 8,
   },
   sectionTitle: {
-    color: "#2f6f5e",
+    color: "#5c7a5f",
     fontSize: 14,
     fontWeight: "900",
-    marginBottom: 4,
   },
   clothingItem: {
     alignItems: "flex-start",
-    borderBottomColor: "#edf1eb",
-    borderBottomWidth: 1,
+    backgroundColor: "#faf7f0",
+    borderColor: "#e5ddd0",
+    borderRadius: 16,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: 10,
-    paddingVertical: 10,
+    gap: 11,
+    marginTop: 8,
+    padding: 13,
+  },
+  primaryClothingItem: {
+    backgroundColor: "#f4f7f4",
+    borderColor: "#c6d9c7",
   },
   clothingText: {
     flex: 1,
   },
   priorityDot: {
-    backgroundColor: "#2f6f5e",
-    borderRadius: 4,
-    height: 8,
+    backgroundColor: "#5c7a5f",
+    borderRadius: 5,
+    height: 10,
     marginTop: 6,
-    width: 8,
+    width: 10,
   },
   secondaryDot: {
-    backgroundColor: "#d78a2f",
-    borderRadius: 4,
-    height: 8,
-    marginTop: 6,
-    width: 8,
+    backgroundColor: "#c97a45",
   },
   forecastRow: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-    paddingRight: 2,
+    gap: 12,
+    marginTop: 16,
+    paddingRight: 6,
   },
   forecastDay: {
-    backgroundColor: "#f8faf7",
-    borderColor: "#e1e8df",
-    borderRadius: 8,
+    borderRadius: 18,
     borderWidth: 1,
-    minHeight: 118,
-    padding: 10,
-    width: 112,
+    minHeight: 132,
+    overflow: "hidden",
+    padding: 13,
+    width: 126,
+  },
+  forecastTopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   forecastDate: {
-    color: "#516158",
-    fontSize: 12,
+    color: "#5a5249",
+    fontSize: 13,
     fontWeight: "800",
   },
   forecastTemp: {
-    color: "#1f2a24",
-    fontSize: 21,
+    color: "#2d2926",
+    fontSize: 28,
     fontWeight: "900",
-    marginTop: 4,
+    marginTop: 12,
   },
   forecastWeather: {
-    color: "#637168",
-    fontSize: 10,
-    lineHeight: 14,
+    color: "#706860",
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 2,
   },
   forecastBadge: {
-    borderRadius: 8,
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: 999,
     borderWidth: 1,
-    marginTop: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    marginTop: 12,
+    minWidth: 62,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
   forecastBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
     textAlign: "center",
   },
