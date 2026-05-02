@@ -346,7 +346,11 @@ function ForecastStrip({
   if (!forecast.length) return null;
 
   return (
-    <View style={styles.forecastRow}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.forecastRow}
+    >
       {forecast.slice(0, 5).map((day, index) => {
         const risk = getTriggerRisk(day, profile);
         const tone = RISK_TONE[risk.level];
@@ -363,7 +367,7 @@ function ForecastStrip({
           </View>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -607,9 +611,9 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 14,
-    padding: 18,
-    paddingBottom: 36,
+    gap: 12,
+    padding: 16,
+    paddingBottom: 32,
   },
   header: {
     alignItems: "center",
@@ -626,7 +630,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#1f2a24",
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "800",
     marginTop: 2,
   },
@@ -648,7 +652,7 @@ const styles = StyleSheet.create({
     borderColor: "#dfe7df",
     borderRadius: 8,
     borderWidth: 1,
-    padding: 16,
+    padding: 14,
     shadowColor: "#1f2a24",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
@@ -657,7 +661,7 @@ const styles = StyleSheet.create({
   heroCard: {
     borderRadius: 8,
     borderWidth: 1,
-    padding: 18,
+    padding: 15,
   },
   heroTopRow: {
     alignItems: "center",
@@ -698,29 +702,29 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   riskLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.4,
-    marginTop: 24,
+    marginTop: 18,
     textTransform: "uppercase",
   },
   decision: {
     color: "#1f2a24",
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "900",
-    lineHeight: 36,
+    lineHeight: 32,
     marginTop: 8,
   },
   bodyText: {
     color: "#435249",
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
   },
   heroMetrics: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
+    gap: 8,
+    marginTop: 14,
   },
   heroMetric: {
     backgroundColor: "rgba(255,255,255,0.58)",
@@ -728,7 +732,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
-    padding: 12,
+    padding: 10,
   },
   metricLabel: {
     color: "#627068",
@@ -737,7 +741,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: "#1f2a24",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "900",
     marginTop: 3,
   },
@@ -746,8 +750,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#2f6f5e",
     borderRadius: 8,
     justifyContent: "center",
-    marginTop: 18,
-    minHeight: 50,
+    marginTop: 14,
+    minHeight: 46,
     paddingHorizontal: 16,
   },
   primaryButtonText: {
@@ -783,9 +787,9 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: "#1f2a24",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
-    lineHeight: 25,
+    lineHeight: 23,
     marginTop: 4,
   },
   inlineBadge: {
@@ -800,8 +804,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   triggerListCompact: {
-    gap: 8,
-    marginTop: 14,
+    gap: 7,
+    marginTop: 12,
   },
   triggerRow: {
     alignItems: "center",
@@ -812,7 +816,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    padding: 14,
+    padding: 12,
   },
   triggerRowActive: {
     backgroundColor: "#edf6ef",
@@ -827,7 +831,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 13,
+    paddingVertical: 11,
   },
   pollenValue: {
     color: "#1f2a24",
@@ -836,7 +840,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: "#1f2a24",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
   },
   mutedText: {
@@ -846,7 +850,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   clothingSection: {
-    marginTop: 16,
+    marginTop: 14,
   },
   sectionTitle: {
     color: "#2f6f5e",
@@ -860,7 +864,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   clothingText: {
     flex: 1,
@@ -881,17 +885,18 @@ const styles = StyleSheet.create({
   },
   forecastRow: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
+    gap: 10,
+    marginTop: 12,
+    paddingRight: 2,
   },
   forecastDay: {
     backgroundColor: "#f8faf7",
     borderColor: "#e1e8df",
     borderRadius: 8,
     borderWidth: 1,
-    flex: 1,
-    minHeight: 112,
-    padding: 8,
+    minHeight: 118,
+    padding: 10,
+    width: 112,
   },
   forecastDate: {
     color: "#516158",
