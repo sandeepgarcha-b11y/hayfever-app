@@ -239,7 +239,12 @@ function formatToday() {
     weekday: "long",
     day: "numeric",
     month: "long",
-  }).format(new Date());
+  }).format(new Date()).replace(",", "");
+}
+
+function formatLocationName(locationName: string) {
+  if (/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(locationName.trim())) return "Current location";
+  return locationName;
 }
 
 function compassDirection(deg: number) {
@@ -881,7 +886,7 @@ export default function App() {
               <View style={styles.locationRow}>
                 <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
                 <Text style={styles.locationText} numberOfLines={1}>
-                  {conditions.locationName}
+                  {formatLocationName(conditions.locationName)}
                 </Text>
               </View>
             </View>
@@ -1068,8 +1073,8 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 12,
-    padding: 16,
+    gap: 10,
+    padding: 14,
     paddingBottom: 40,
   },
   header: {
@@ -1077,7 +1082,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    paddingTop: 10,
+    paddingTop: 6,
   },
   headerCopy: {
     flex: 1,
@@ -1087,7 +1092,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   dateLocationRow: {
     alignItems: "center",
@@ -1104,7 +1109,7 @@ const styles = StyleSheet.create({
     color: "#8e867c",
     fontSize: 12,
     fontWeight: "600",
-    maxWidth: 132,
+    maxWidth: 120,
   },
   headerActions: {
     alignItems: "flex-end",
@@ -1112,22 +1117,22 @@ const styles = StyleSheet.create({
   },
   brand: {
     color: "#5c7a5f",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 2.2,
     textTransform: "uppercase",
   },
   title: {
     color: "#2d2926",
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "900",
-    lineHeight: 23,
+    lineHeight: 21,
   },
   dateText: {
     color: "#8e867c",
     fontSize: 12,
     fontWeight: "600",
-    marginTop: 6,
+    marginTop: 4,
   },
   onboardingTitle: {
     color: "#2d2926",
@@ -1145,19 +1150,19 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fefcf8",
     borderColor: "#e5ddd0",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
+    padding: 14,
     shadowColor: "#2d2926",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.07,
     shadowRadius: 18,
   },
   heroCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: "hidden",
-    padding: 16,
+    padding: 14,
     shadowColor: "#2d2926",
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.08,
@@ -1167,12 +1172,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fdf6f0",
     borderColor: "#f4d0b5",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   statusBannerText: {
     color: "#854a28",
@@ -1221,15 +1226,15 @@ const styles = StyleSheet.create({
   planIntro: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
-    marginTop: 14,
+    gap: 10,
+    marginTop: 10,
   },
   planCopy: {
     flex: 1,
     minWidth: 0,
   },
   riskLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -1237,9 +1242,9 @@ const styles = StyleSheet.create({
   decision: {
     color: "#2d2926",
     flex: 1,
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: "900",
-    lineHeight: 25,
+    lineHeight: 22,
   },
   decisionRow: {
     alignItems: "center",
@@ -1248,22 +1253,22 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: "#5a5249",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
-    paddingLeft: 56,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 8,
+    paddingLeft: 50,
   },
   planStatRow: {
     flexDirection: "row",
-    gap: 7,
-    marginTop: 16,
+    gap: 6,
+    marginTop: 12,
   },
   planStat: {
     backgroundColor: "rgba(254,252,248,0.68)",
-    borderRadius: 13,
+    borderRadius: 12,
     flex: 1,
-    minHeight: 56,
-    padding: 9,
+    minHeight: 48,
+    padding: 7,
   },
   planStatLabelRow: {
     alignItems: "center",
@@ -1273,22 +1278,22 @@ const styles = StyleSheet.create({
   planStatLabel: {
     color: "#706860",
     flex: 1,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "700",
   },
   planStatValue: {
     color: "#2d2926",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "900",
-    marginTop: 6,
+    marginTop: 5,
   },
   planOutfit: {
     borderTopColor: "rgba(93,133,109,0.16)",
     borderTopWidth: 1,
-    marginHorizontal: -16,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    marginHorizontal: -14,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingTop: 10,
   },
   outfitHeader: {
     alignItems: "center",
@@ -1346,11 +1351,11 @@ const styles = StyleSheet.create({
   },
   iconBadge: {
     alignItems: "center",
-    borderRadius: 13,
+    borderRadius: 12,
     borderWidth: 1,
-    height: 40,
+    height: 36,
     justifyContent: "center",
-    width: 40,
+    width: 36,
   },
   cardHeader: {
     alignItems: "flex-start",
@@ -1365,16 +1370,16 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     color: "#8e867c",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.8,
     textTransform: "uppercase",
   },
   cardTitle: {
     color: "#2d2926",
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: "800",
-    lineHeight: 26,
+    lineHeight: 23,
     marginTop: 5,
   },
   inlineBadge: {
@@ -1398,16 +1403,16 @@ const styles = StyleSheet.create({
   },
   supportingGrid: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
   },
   supportCard: {
     backgroundColor: "#fefcf8",
     borderColor: "#e5ddd0",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     flex: 1,
-    minHeight: 194,
-    padding: 14,
+    minHeight: 168,
+    padding: 12,
     shadowColor: "#2d2926",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
@@ -1422,13 +1427,13 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     flexDirection: "row",
     gap: 4,
-    marginTop: 16,
+    marginTop: 12,
   },
   compactTemperatureValue: {
     color: "#2d2926",
-    fontSize: 40,
+    fontSize: 34,
     fontWeight: "300",
-    lineHeight: 44,
+    lineHeight: 38,
   },
   compactTemperatureUnit: {
     color: "#8e867c",
@@ -1438,14 +1443,14 @@ const styles = StyleSheet.create({
   },
   supportMuted: {
     color: "#706860",
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
     marginTop: 2,
   },
   supportList: {
-    gap: 7,
+    gap: 6,
     marginTop: "auto",
-    paddingTop: 18,
+    paddingTop: 12,
   },
   supportMetricRow: {
     alignItems: "center",
@@ -1455,16 +1460,16 @@ const styles = StyleSheet.create({
   supportMetricText: {
     color: "#5a5249",
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
   supportBadge: {
     alignSelf: "flex-start",
-    marginTop: 16,
+    marginTop: 12,
   },
   pollenMiniList: {
-    gap: 10,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 10,
   },
   pollenMiniTitle: {
     color: "#2d2926",
@@ -1576,13 +1581,13 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: "#2d2926",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
   },
   mutedText: {
     color: "#706860",
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     marginTop: 3,
   },
   clothingSection: {
@@ -1617,7 +1622,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     flexDirection: "row",
     gap: 10,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   primaryClothingItem: {
     backgroundColor: "#f4f7f4",
@@ -1629,26 +1634,26 @@ const styles = StyleSheet.create({
   priorityDot: {
     backgroundColor: "#5c7a5f",
     borderRadius: 5,
-    height: 10,
-    marginTop: 6,
-    width: 10,
+    height: 8,
+    marginTop: 5,
+    width: 8,
   },
   secondaryDot: {
     backgroundColor: "#c97a45",
   },
   forecastRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    gap: 10,
+    marginTop: 12,
     paddingRight: 6,
   },
   forecastDay: {
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
-    minHeight: 126,
+    minHeight: 112,
     overflow: "hidden",
-    padding: 12,
-    width: 112,
+    padding: 10,
+    width: 104,
   },
   forecastTopRow: {
     alignItems: "center",
@@ -1662,14 +1667,14 @@ const styles = StyleSheet.create({
   },
   forecastTemp: {
     color: "#2d2926",
-    fontSize: 25,
+    fontSize: 22,
     fontWeight: "900",
-    marginTop: 12,
+    marginTop: 8,
   },
   forecastWeather: {
     color: "#706860",
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
     marginTop: 2,
   },
   forecastBadge: {
@@ -1677,7 +1682,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     borderRadius: 999,
     borderWidth: 1,
-    marginTop: 12,
+    marginTop: 8,
     minWidth: 62,
     paddingHorizontal: 9,
     paddingVertical: 5,
@@ -1691,21 +1696,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fefcf8",
     borderColor: "#e5ddd0",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   settingsIcon: {
     alignItems: "center",
     backgroundColor: "#e4ece4",
-    borderRadius: 13,
-    height: 40,
+    borderRadius: 12,
+    height: 36,
     justifyContent: "center",
-    width: 40,
+    width: 36,
   },
   settingsCopy: {
     flex: 1,
