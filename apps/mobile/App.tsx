@@ -33,7 +33,6 @@ import {
   Shirt,
   SlidersHorizontal,
   Sun,
-  Thermometer,
   Umbrella,
   Wind,
   Zap,
@@ -61,7 +60,6 @@ type TriggerKey = keyof AllergyProfile;
 const PROFILE_KEY = "hayfever.allergyProfile.v1";
 const PROFILE_COMPLETE_KEY = "hayfever.profileComplete.v1";
 const DEFAULT_PROFILE: AllergyProfile = { grass: true, tree: true, weed: true };
-const STALE_AFTER_MINUTES = 90;
 
 const TRIGGER_COPY: Array<{ key: TriggerKey; label: string; detail: string }> = [
   { key: "grass", label: "Grass", detail: "Lawns, parks, open fields" },
@@ -195,10 +193,6 @@ function formatUpdated(iso: string) {
   return `${Math.floor(minutes / 60)} hr ago`;
 }
 
-function isStale(iso: string) {
-  return Date.now() - new Date(iso).getTime() > STALE_AFTER_MINUTES * 60_000;
-}
-
 function getPollenValue(pollen: PollenData | DailyForecast, key: TriggerKey) {
   if (key === "grass") return pollen.grassPollen;
   if (key === "tree") return pollen.treePollen;
@@ -242,18 +236,15 @@ function formatToday() {
   }).format(new Date()).replace(",", "");
 }
 
-function formatTodaySubhead(locationName: string) {
-  return `${formatToday()} / ${formatLocationName(locationName)}`;
-}
-
 function formatLocationName(locationName: string) {
   if (/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(locationName.trim())) return "Current location";
   return locationName;
 }
 
-function formatDayInitial(date: string) {
+function formatRailDay(date: string, index: number) {
+  if (index === 0) return "Today";
   const parsed = new Date(`${date}T12:00:00Z`);
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(parsed).slice(0, 1);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(parsed);
 }
 
 function compassDirection(deg: number) {
@@ -300,62 +291,6 @@ function groupClothing(items: ClothingItem[]) {
   });
 
   return groups;
-}
-
-function getStateCopy(state: DataState, conditions: ConditionsResponse) {
-  if (state === "live" && isStale(conditions.fetchedAt)) {
-    return {
-      label: "Stale",
-      detail: `Last live update ${formatUpdated(conditions.fetchedAt)}`,
-      tone: styles.statusWarning,
-    };
-  }
-
-  if (state === "live") {
-    return {
-      label: "Live",
-      detail: `Updated ${formatUpdated(conditions.fetchedAt)}`,
-      tone: styles.statusLive,
-    };
-  }
-
-  if (state === "loading") {
-    return {
-      label: "Updating",
-      detail: "Fetching local pollen and weather",
-      tone: styles.statusNeutral,
-    };
-  }
-
-  if (state === "permission") {
-    return {
-      label: "Location off",
-      detail: "Local pollen needs device location",
-      tone: styles.statusWarning,
-    };
-  }
-
-  if (state === "stale") {
-    return {
-      label: "Stale",
-      detail: `Last live update ${formatUpdated(conditions.fetchedAt)}`,
-      tone: styles.statusWarning,
-    };
-  }
-
-  if (state === "error") {
-    return {
-      label: "Offline",
-      detail: "Using sample conditions",
-      tone: styles.statusError,
-    };
-  }
-
-  return {
-    label: "Sample",
-    detail: "Live API not configured",
-    tone: styles.statusNeutral,
-  };
 }
 
 function getBannerCopy(state: DataState) {
@@ -507,35 +442,44 @@ function WeekRail({ forecast, profile }: { forecast: DailyForecast[]; profile: A
 
   return (
     <View style={styles.weekRail}>
-      {days.map((day, index) => {
-        const risk = getTriggerRisk(day, profile);
-        const tone = RISK_TONE[risk.level];
-        const isToday = index === 0;
+      <View style={styles.weekRailHeader}>
+        <Text style={styles.weekRailTitle}>Next 5 days</Text>
+        <Text style={styles.weekRailSubhead}>Weather + pollen</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekRailScroller}>
+        {days.map((day, index) => {
+          const risk = getTriggerRisk(day, profile);
+          const tone = RISK_TONE[risk.level];
+          const isToday = index === 0;
 
-        return (
-          <View key={day.date} style={styles.weekDay}>
-            <Text style={[styles.weekDayLabel, isToday ? styles.weekDayLabelActive : null]}>
-              {formatDayInitial(day.date)}
-            </Text>
+          return (
             <View
+              key={day.date}
               style={[
-                styles.weekDayCircle,
-                {
-                  backgroundColor: isToday ? "#2d2926" : "transparent",
-                  borderColor: isToday ? "#2d2926" : "#c7c1b7",
-                },
+                styles.weekDay,
+                isToday ? styles.weekDayActive : null,
+                index === days.length - 1 ? styles.weekDayLast : null,
               ]}
             >
-              {isToday ? (
-                <CheckCircle2 size={15} color="#fefcf8" strokeWidth={2.5} />
-              ) : (
+              <Text style={[styles.weekDayLabel, isToday ? styles.weekDayLabelActive : null]}>
+                {formatRailDay(day.date, index)}
+              </Text>
+              <Text style={styles.weekDayTemp}>{day.maxTemp}°</Text>
+              <WeatherIcon code={day.weatherCode} size={18} color="#c97a45" />
+              <View style={styles.weekDayMeta}>
+                <Droplets size={10} color="#706860" strokeWidth={2.2} />
+                <Text style={styles.weekDayMetaText}>{day.precipProbability}%</Text>
+              </View>
+              <View style={styles.weekDayPollen}>
                 <View style={[styles.weekDayDot, { backgroundColor: tone.accent }]} />
-              )}
+                <Text style={[styles.weekDayPollenText, { color: tone.text }]} numberOfLines={1}>
+                  {risk.level}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.weekDayTemp}>{day.maxTemp}°</Text>
-          </View>
-        );
-      })}
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
@@ -835,7 +779,6 @@ export default function App() {
     () => groupClothing(personalisedRecommendation.clothing),
     [personalisedRecommendation.clothing]
   );
-  const status = getStateCopy(dataState, conditions);
   const bannerCopy = getBannerCopy(dataState);
 
   const saveProfile = useCallback(async (nextProfile: AllergyProfile) => {
@@ -930,13 +873,14 @@ export default function App() {
               <Text style={styles.brand}>Hayfever</Text>
             </View>
             <Text style={styles.title}>Today</Text>
+            <Text style={styles.dateText}>{formatToday()}</Text>
             <View style={styles.dateLocationRow}>
               <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
               <Text style={styles.locationText} numberOfLines={1}>
-                {formatTodaySubhead(conditions.locationName)}
+                {formatLocationName(conditions.locationName)}
               </Text>
             </View>
-            <Text style={styles.dateText}>{formatUpdated(conditions.fetchedAt)}</Text>
+            <Text style={styles.updatedCaption}>{formatUpdated(conditions.fetchedAt)}</Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
@@ -1059,11 +1003,11 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f7f4ef",
+    backgroundColor: "#f4efe8",
   },
   ambientGlow: {
     borderRadius: 999,
-    opacity: 0.42,
+    opacity: 0.3,
     position: "absolute",
   },
   ambientGlowTop: {
@@ -1074,13 +1018,13 @@ const styles = StyleSheet.create({
   },
   ambientGlowSide: {
     height: 240,
-    opacity: 0.2,
+    opacity: 0.14,
     right: -130,
     top: 260,
     width: 300,
   },
   leafMotif: {
-    opacity: 0.045,
+    opacity: 0.028,
     position: "absolute",
   },
   leafMotifOne: {
@@ -1121,9 +1065,9 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 10,
-    padding: 14,
-    paddingBottom: 40,
+    gap: 12,
+    padding: 16,
+    paddingBottom: 42,
   },
   header: {
     alignItems: "flex-start",
@@ -1144,9 +1088,17 @@ const styles = StyleSheet.create({
   },
   dateLocationRow: {
     alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(254,252,248,0.72)",
+    borderColor: "rgba(229,221,208,0.88)",
+    borderRadius: 999,
+    borderWidth: 1,
     flexDirection: "row",
-    gap: 5,
-    marginTop: 3,
+    gap: 6,
+    marginTop: 7,
+    maxWidth: "100%",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
   locationRow: {
     alignItems: "center",
@@ -1172,36 +1124,74 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#2d2926",
-    fontSize: 38,
+    fontSize: 40,
     fontWeight: "900",
-    letterSpacing: -0.4,
-    lineHeight: 42,
+    letterSpacing: -0.5,
+    lineHeight: 43,
   },
   dateText: {
+    color: "#5a5249",
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 1,
+  },
+  updatedCaption: {
     color: "#8e867c",
     fontSize: 12,
     fontWeight: "600",
-    marginTop: 3,
+    marginTop: 5,
   },
   weekRail: {
-    alignItems: "center",
-    backgroundColor: "rgba(254,252,248,0.56)",
-    borderColor: "rgba(229,221,208,0.72)",
-    borderRadius: 18,
+    backgroundColor: "#fbf7ef",
+    borderColor: "rgba(217,208,195,0.82)",
+    borderRadius: 24,
     borderWidth: 1,
+    overflow: "hidden",
+    paddingTop: 14,
+  },
+  weekRailHeader: {
+    alignItems: "center",
+    borderBottomColor: "rgba(217,208,195,0.72)",
+    borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingBottom: 11,
+  },
+  weekRailTitle: {
+    color: "#2d2926",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  weekRailSubhead: {
+    color: "#8e867c",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  weekRailScroller: {
+    paddingHorizontal: 8,
+    paddingVertical: 13,
   },
   weekDay: {
     alignItems: "center",
-    gap: 5,
-    minWidth: 42,
+    borderColor: "rgba(217,208,195,0.7)",
+    borderRightWidth: 1,
+    gap: 7,
+    minHeight: 116,
+    paddingHorizontal: 13,
+    width: 76,
+  },
+  weekDayActive: {
+    backgroundColor: "rgba(254,252,248,0.72)",
+    borderRadius: 17,
+    borderRightWidth: 0,
+  },
+  weekDayLast: {
+    borderRightWidth: 0,
   },
   weekDayLabel: {
     color: "#8e867c",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
   },
   weekDayLabelActive: {
@@ -1221,7 +1211,27 @@ const styles = StyleSheet.create({
     width: 10,
   },
   weekDayTemp: {
-    color: "#706860",
+    color: "#2d2926",
+    fontSize: 22,
+    fontWeight: "900",
+    lineHeight: 25,
+  },
+  weekDayMeta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 3,
+  },
+  weekDayMetaText: {
+    color: "#5a5249",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  weekDayPollen: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
+  weekDayPollenText: {
     fontSize: 10,
     fontWeight: "800",
   },
@@ -1240,24 +1250,24 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 14,
+    borderColor: "rgba(217,208,195,0.9)",
+    borderRadius: 22,
     borderWidth: 1,
-    padding: 14,
+    padding: 16,
     shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
   },
   heroCard: {
-    borderRadius: 14,
+    borderRadius: 24,
     borderWidth: 1,
     overflow: "hidden",
-    padding: 14,
+    padding: 18,
     shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
   },
   statusBanner: {
     alignItems: "center",
@@ -1318,7 +1328,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     flexDirection: "row",
     gap: 10,
-    marginTop: 10,
+    marginTop: 13,
   },
   planCopy: {
     flex: 1,
@@ -1344,22 +1354,22 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     color: "#5a5249",
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 10,
     paddingLeft: 50,
   },
   planStatRow: {
     flexDirection: "row",
-    gap: 6,
-    marginTop: 12,
+    gap: 8,
+    marginTop: 16,
   },
   planStat: {
-    backgroundColor: "rgba(254,252,248,0.68)",
-    borderRadius: 12,
+    backgroundColor: "rgba(254,252,248,0.78)",
+    borderRadius: 15,
     flex: 1,
-    minHeight: 48,
-    padding: 7,
+    minHeight: 55,
+    padding: 8,
   },
   planStatLabelRow: {
     alignItems: "center",
@@ -1381,10 +1391,10 @@ const styles = StyleSheet.create({
   planOutfit: {
     borderTopColor: "rgba(93,133,109,0.16)",
     borderTopWidth: 1,
-    marginHorizontal: -14,
-    marginTop: 12,
-    paddingHorizontal: 14,
-    paddingTop: 10,
+    marginHorizontal: -18,
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingTop: 13,
   },
   outfitHeader: {
     alignItems: "center",
@@ -1428,9 +1438,9 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     alignItems: "center",
-    backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 16,
+    backgroundColor: "rgba(254,252,248,0.86)",
+    borderColor: "rgba(217,208,195,0.88)",
+    borderRadius: 22,
     borderWidth: 1,
     height: 44,
     justifyContent: "center",
@@ -1442,11 +1452,11 @@ const styles = StyleSheet.create({
   },
   iconBadge: {
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 15,
     borderWidth: 1,
-    height: 36,
+    height: 42,
     justifyContent: "center",
-    width: 36,
+    width: 42,
   },
   cardHeader: {
     alignItems: "flex-start",
@@ -1463,7 +1473,7 @@ const styles = StyleSheet.create({
     color: "#8e867c",
     fontSize: 10,
     fontWeight: "800",
-    letterSpacing: 1.8,
+    letterSpacing: 2.5,
     textTransform: "uppercase",
   },
   cardTitle: {
@@ -1494,20 +1504,20 @@ const styles = StyleSheet.create({
   },
   supportingGrid: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   supportCard: {
-    backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 14,
+    backgroundColor: "#ece7dc",
+    borderColor: "#e1d8ca",
+    borderRadius: 18,
     borderWidth: 1,
     flex: 1,
-    minHeight: 168,
-    padding: 12,
+    minHeight: 178,
+    padding: 13,
     shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 10,
   },
   supportCardTop: {
     alignItems: "center",
@@ -1556,7 +1566,7 @@ const styles = StyleSheet.create({
   },
   supportBadge: {
     alignSelf: "flex-start",
-    marginTop: 12,
+    marginTop: 13,
   },
   pollenMiniList: {
     gap: 8,
@@ -1734,17 +1744,17 @@ const styles = StyleSheet.create({
   },
   forecastRow: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
+    gap: 12,
+    marginTop: 14,
     paddingRight: 6,
   },
   forecastDay: {
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
     minHeight: 112,
     overflow: "hidden",
-    padding: 10,
-    width: 104,
+    padding: 12,
+    width: 112,
   },
   forecastTopRow: {
     alignItems: "center",
@@ -1786,22 +1796,22 @@ const styles = StyleSheet.create({
   settingsRow: {
     alignItems: "center",
     backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 14,
+    borderColor: "rgba(217,208,195,0.9)",
+    borderRadius: 22,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
-    minHeight: 58,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: 64,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   settingsIcon: {
     alignItems: "center",
     backgroundColor: "#e4ece4",
-    borderRadius: 12,
-    height: 36,
+    borderRadius: 15,
+    height: 42,
     justifyContent: "center",
-    width: 36,
+    width: 42,
   },
   settingsCopy: {
     flex: 1,
