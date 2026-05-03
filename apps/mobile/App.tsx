@@ -7,15 +7,12 @@ import {
 } from "@hayfever/core";
 import type {
   AllergyProfile,
-  ClothingCategory,
-  ClothingItem,
   ConditionsResponse,
   DailyForecast,
   PollenData,
   PollenLevel,
 } from "@hayfever/core";
 import * as Location from "expo-location";
-import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -34,7 +31,6 @@ import {
   Shirt,
   SlidersHorizontal,
   Sun,
-  Umbrella,
   UserRound,
   Wind,
   Zap,
@@ -63,6 +59,28 @@ type ActiveTab = "today" | "outlook" | "profile";
 const PROFILE_KEY = "hayfever.allergyProfile.v1";
 const PROFILE_COMPLETE_KEY = "hayfever.profileComplete.v1";
 const DEFAULT_PROFILE: AllergyProfile = { grass: true, tree: true, weed: true };
+
+const COLORS = {
+  canvas: "#f7f7f4",
+  surface: "#ffffff",
+  surfaceAlt: "#f4f4f1",
+  text: "#171717",
+  textSoft: "#5f5f5f",
+  textMuted: "#8a8a8a",
+  line: "#e7e7e2",
+  lineStrong: "#ddddd6",
+  green: "#2f6f5e",
+  greenSoft: "#e8f2ed",
+  orange: "#c9753d",
+  orangeSoft: "#fff1e7",
+  dangerText: "#8a4b24",
+} as const;
+
+const RADIUS = {
+  card: 24,
+  panel: 18,
+  pill: 999,
+} as const;
 
 const TRIGGER_COPY: Array<{ key: TriggerKey; label: string; detail: string }> = [
   { key: "grass", label: "Grass", detail: "Lawns, parks, open fields" },
@@ -257,39 +275,6 @@ function uvLabel(uv: number) {
   return "Extreme";
 }
 
-function inferCategory(item: ClothingItem): ClothingCategory {
-  if (item.category) return item.category;
-  const label = item.label.toLowerCase();
-  if (label.includes("umbrella") || label.includes("carry") || label.includes("packable")) return "carry";
-  if (label.includes("sunglasses") || label.includes("glasses") || label.includes("hat") || label.includes("sunscreen")) {
-    return "protect";
-  }
-  return "wear";
-}
-
-function groupClothing(items: ClothingItem[]) {
-  const groups: Record<ClothingCategory, ClothingItem[]> = {
-    wear: [],
-    carry: [],
-    protect: [],
-  };
-
-  items.forEach((item) => {
-    groups[inferCategory(item)].push(item);
-  });
-
-  Object.values(groups).forEach((group) => {
-    group.sort((a, b) => {
-      if (a.priority === b.priority) return a.label.localeCompare(b.label);
-      if (a.priority === "primary") return -1;
-      if (b.priority === "primary") return 1;
-      return 0;
-    });
-  });
-
-  return groups;
-}
-
 function getBannerCopy(state: DataState) {
   if (state === "permission") return "Location unavailable - showing sample conditions";
   if (state === "error") return "Live data unavailable - showing sample conditions";
@@ -298,7 +283,7 @@ function getBannerCopy(state: DataState) {
   return null;
 }
 
-function WeatherIcon({ code, color = "#c97a45", size = 22 }: { code: number; color?: string; size?: number }) {
+function WeatherIcon({ code, color = COLORS.orange, size = 22 }: { code: number; color?: string; size?: number }) {
   if (code <= 1) return <Sun size={size} color={color} strokeWidth={2.2} />;
   if (code <= 3) return <Cloud size={size} color={color} strokeWidth={2.2} />;
   if (code <= 69) return <CloudRain size={size} color={color} strokeWidth={2.2} />;
@@ -310,7 +295,7 @@ function WeatherIcon({ code, color = "#c97a45", size = 22 }: { code: number; col
 function AmbientBackground() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <LinearGradient colors={["#fbfaf7", "#f4f0ea"]} style={StyleSheet.absoluteFillObject} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.canvas }]} />
     </View>
   );
 }
@@ -532,52 +517,6 @@ function OnboardingScreen({
   );
 }
 
-function ClothingSection({ title, items, compact = false }: { title: string; items: ClothingItem[]; compact?: boolean }) {
-  if (!items.length) return null;
-
-  const isCarry = title === "Carry";
-  const isProtect = title === "Protect";
-  const icon = isCarry ? (
-    <Umbrella size={17} color="#854a28" strokeWidth={2.3} />
-  ) : isProtect ? (
-    <CheckCircle2 size={17} color="#5c7a5f" strokeWidth={2.3} />
-  ) : (
-    <Shirt size={17} color="#5c7a5f" strokeWidth={2.3} />
-  );
-
-  return (
-    <View style={compact ? styles.compactClothingSection : styles.clothingSection}>
-      {compact ? (
-        title === "Wear" ? null : (
-          <Text style={styles.compactSectionLabel}>{title}</Text>
-        )
-      ) : (
-        <View style={styles.sectionHeaderRow}>
-          <IconBadge backgroundColor={isCarry ? "#faeade" : "#e4ece4"} borderColor={isCarry ? "#f4d0b5" : "#c6d9c7"}>
-            {icon}
-          </IconBadge>
-          <Text style={styles.sectionTitle}>{title}</Text>
-        </View>
-      )}
-      {items.map((item) => (
-        <View
-          key={`${title}-${item.label}`}
-          style={[
-            compact ? styles.compactClothingItem : styles.clothingItem,
-            item.priority === "primary" && !compact ? styles.primaryClothingItem : null,
-          ]}
-        >
-          <View style={[styles.priorityDot, item.priority === "primary" ? null : styles.secondaryDot]} />
-          <View style={styles.clothingText}>
-            <Text style={styles.rowTitle}>{item.label}</Text>
-            <Text style={styles.mutedText}>{item.reason}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function ForecastStrip({
   forecast,
   profile,
@@ -588,36 +527,31 @@ function ForecastStrip({
   if (!forecast.length) return null;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.forecastRow}
-    >
+    <View style={styles.forecastGrid}>
       {forecast.slice(0, 5).map((day, index) => {
         const risk = getTriggerRisk(day, profile);
         const tone = RISK_TONE[risk.level];
-        const forecastGradient: [string, string] = index === 0 ? tone.hero : ["#fefcf8", "#faf7f0"];
         return (
-          <LinearGradient key={day.date} colors={forecastGradient} style={[styles.forecastDay, { borderColor: index === 0 ? tone.border : "#e5ddd0" }]}>
+          <View key={day.date} style={[styles.forecastDay, index === 0 ? styles.forecastDayActive : null]}>
             <View style={styles.forecastTopRow}>
               <Text style={styles.forecastDate}>{formatForecastDay(day.date, index)}</Text>
               <WeatherIcon code={day.weatherCode} size={18} color="#c97a45" />
             </View>
             <Text style={styles.forecastTemp}>{day.maxTemp}°</Text>
-            <Text style={styles.forecastWeather} numberOfLines={1}>
-              {getWeatherDescription(day.weatherCode)}
-            </Text>
             <View style={styles.forecastRainRow}>
               <Droplets size={12} color="#706860" strokeWidth={2.2} />
               <Text style={styles.forecastRainText}>{day.precipProbability}%</Text>
             </View>
-            <View style={[styles.forecastBadge, { backgroundColor: tone.background, borderColor: tone.border }]}>
-              <Text style={[styles.forecastBadgeText, { color: tone.text }]}>{risk.level}</Text>
+            <View style={styles.forecastRiskRow}>
+              <View style={[styles.forecastRiskDot, { backgroundColor: tone.accent }]} />
+              <Text style={[styles.forecastBadgeText, { color: tone.text }]} numberOfLines={1}>
+                {risk.level === "Moderate" ? "Mod" : risk.level}
+              </Text>
             </View>
-          </LinearGradient>
+          </View>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -632,17 +566,17 @@ function BottomTabBar({
     {
       key: "today",
       label: "Today",
-      icon: (active) => <Leaf size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+      icon: (active) => <Leaf size={22} color={active ? COLORS.text : COLORS.textMuted} strokeWidth={2.4} />,
     },
     {
       key: "outlook",
       label: "Outlook",
-      icon: (active) => <CalendarDays size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+      icon: (active) => <CalendarDays size={22} color={active ? COLORS.text : COLORS.textMuted} strokeWidth={2.4} />,
     },
     {
       key: "profile",
       label: "Profile",
-      icon: (active) => <UserRound size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+      icon: (active) => <UserRound size={22} color={active ? COLORS.text : COLORS.textMuted} strokeWidth={2.4} />,
     },
   ];
 
@@ -704,8 +638,12 @@ export default function App() {
 
   const triggerRisk = useMemo(() => getTriggerRisk(conditions.pollen, profile), [conditions.pollen, profile]);
   const riskTone = RISK_TONE[triggerRisk.level];
-  const clothingGroups = useMemo(
-    () => groupClothing(personalisedRecommendation.clothing),
+  const outfitActions = useMemo(
+    () => {
+      const primaryItems = personalisedRecommendation.clothing.filter((item) => item.priority === "primary");
+      const candidates = primaryItems.length ? primaryItems : personalisedRecommendation.clothing;
+      return candidates.slice(0, 2);
+    },
     [personalisedRecommendation.clothing]
   );
   const trackedTriggers = useMemo(
@@ -801,10 +739,6 @@ export default function App() {
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <View style={styles.brandRow}>
-                <Leaf size={14} color="#5c7a5f" strokeWidth={2.4} />
-                <Text style={styles.brand}>Hayfever</Text>
-              </View>
               <Text style={styles.title}>{screenTitle}</Text>
               <Text style={styles.dateText}>{screenSubhead}</Text>
               <View style={styles.dateLocationRow}>
@@ -840,7 +774,7 @@ export default function App() {
           ) : null}
 
           {activeTab === "today" ? (
-            <LinearGradient colors={riskTone.hero} style={[styles.heroCard, { borderColor: riskTone.border }]}>
+            <View style={[styles.heroCard, { borderColor: riskTone.border }]}>
               <Text style={styles.cardLabel}>Today's plan</Text>
               <View style={styles.planIntro}>
                 <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
@@ -881,13 +815,19 @@ export default function App() {
               <View style={styles.planOutfit}>
                 <View style={styles.outfitHeader}>
                   <Shirt size={15} color="#8e867c" strokeWidth={2.3} />
-                  <Text style={styles.cardLabel}>Wear</Text>
+                  <Text style={styles.cardLabel}>Outfit</Text>
                 </View>
-                <ClothingSection title="Wear" items={clothingGroups.wear} compact />
-                <ClothingSection title="Carry" items={clothingGroups.carry} compact />
-                <ClothingSection title="Protect" items={clothingGroups.protect} compact />
+                {outfitActions.map((item) => (
+                  <View key={item.label} style={styles.compactClothingItem}>
+                    <View style={[styles.priorityDot, item.priority === "primary" ? null : styles.secondaryDot]} />
+                    <View style={styles.clothingText}>
+                      <Text style={styles.rowTitle}>{item.label}</Text>
+                      <Text style={styles.mutedText}>{item.reason}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
-            </LinearGradient>
+            </View>
           ) : null}
 
           {activeTab === "outlook" ? (
@@ -969,58 +909,10 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#fbfaf7",
+    backgroundColor: COLORS.canvas,
   },
   appShell: {
     flex: 1,
-  },
-  ambientGlow: {
-    borderRadius: 999,
-    opacity: 0.18,
-    position: "absolute",
-  },
-  ambientGlowTop: {
-    height: 220,
-    left: -140,
-    top: -220,
-    width: 560,
-  },
-  ambientGlowSide: {
-    height: 240,
-    opacity: 0.1,
-    right: -130,
-    top: 330,
-    width: 300,
-  },
-  leafMotif: {
-    opacity: 0.018,
-    position: "absolute",
-  },
-  leafMotifOne: {
-    right: -32,
-    top: 190,
-    transform: [{ rotate: "28deg" }],
-  },
-  leafMotifTwo: {
-    bottom: 110,
-    left: -30,
-    transform: [{ rotate: "-22deg" }],
-  },
-  pollenDust: {
-    height: 56,
-    left: 0,
-    opacity: 0.5,
-    position: "absolute",
-    right: 0,
-    top: 104,
-  },
-  pollenDot: {
-    backgroundColor: "#ecb188",
-    borderRadius: 4,
-    height: 8,
-    opacity: 0.5,
-    position: "absolute",
-    width: 8,
   },
   loadingScreen: {
     alignItems: "center",
@@ -1034,50 +926,35 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 14,
-    padding: 18,
-    paddingBottom: 24,
+    gap: 16,
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 28,
   },
   header: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 12,
+    gap: 16,
     justifyContent: "space-between",
-    paddingTop: 4,
+    paddingTop: 8,
   },
   headerCopy: {
     flex: 1,
     minWidth: 0,
   },
-  brandRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 3,
-  },
   dateLocationRow: {
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: "rgba(254,252,248,0.72)",
-    borderColor: "rgba(229,221,208,0.88)",
-    borderRadius: 999,
-    borderWidth: 1,
+    backgroundColor: "transparent",
     flexDirection: "row",
     gap: 6,
-    marginTop: 7,
+    marginTop: 9,
     maxWidth: "100%",
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  locationRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 5,
   },
   locationText: {
-    color: "#8e867c",
+    color: COLORS.textMuted,
     flex: 1,
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: "600",
   },
   headerActions: {
@@ -1085,142 +962,106 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brand: {
-    color: "#5c7a5f",
+    color: COLORS.green,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 2.2,
     textTransform: "uppercase",
   },
   title: {
-    color: "#2d2926",
-    fontSize: 40,
+    color: COLORS.text,
+    fontSize: 48,
     fontWeight: "900",
-    letterSpacing: -0.5,
-    lineHeight: 43,
+    letterSpacing: 0,
+    lineHeight: 52,
   },
   dateText: {
-    color: "#5a5249",
-    fontSize: 15,
+    color: COLORS.text,
+    fontSize: 20,
     fontWeight: "800",
-    marginTop: 4,
+    marginTop: 6,
   },
   updatedCaption: {
-    color: "#8e867c",
-    fontSize: 12,
+    color: COLORS.textMuted,
+    fontSize: 13,
     fontWeight: "600",
-    marginTop: 5,
+    marginTop: 8,
   },
   onboardingTitle: {
-    color: "#2d2926",
+    color: COLORS.text,
     fontSize: 34,
     fontWeight: "800",
     lineHeight: 40,
     marginTop: 10,
   },
   onboardingCopy: {
-    color: "#706860",
+    color: COLORS.textSoft,
     fontSize: 16,
     lineHeight: 23,
     marginTop: 10,
   },
   card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e8e4de",
-    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.card,
     borderWidth: 1,
-    padding: 18,
-    shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.03,
-    shadowRadius: 14,
+    padding: 20,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.025,
+    shadowRadius: 12,
   },
   heroCard: {
-    borderRadius: 24,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
     borderWidth: 1,
     overflow: "hidden",
-    padding: 18,
-    shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
+    padding: 20,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.035,
+    shadowRadius: 16,
   },
   statusBanner: {
     alignItems: "center",
-    backgroundColor: "#fdf6f0",
-    borderColor: "#f4d0b5",
-    borderRadius: 14,
+    backgroundColor: COLORS.orangeSoft,
+    borderColor: "#ffd7bd",
+    borderRadius: RADIUS.panel,
     borderWidth: 1,
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
   },
   statusBannerText: {
-    color: "#854a28",
+    color: COLORS.dangerText,
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
-  },
-  heroTopRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "space-between",
-  },
-  statusPill: {
-    alignItems: "center",
-    borderRadius: 14,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  statusLive: {
-    backgroundColor: "#e4ece4",
-  },
-  statusWarning: {
-    backgroundColor: "#faeade",
-  },
-  statusError: {
-    backgroundColor: "#f4d0b5",
-  },
-  statusNeutral: {
-    backgroundColor: "#e8e6e3",
-  },
-  statusPillText: {
-    color: "#3b5240",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  updatedText: {
-    color: "#706860",
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: "right",
   },
   planIntro: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 10,
-    marginTop: 13,
+    gap: 14,
+    marginTop: 18,
   },
   planCopy: {
     flex: 1,
     minWidth: 0,
   },
   riskLabel: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: "800",
-    letterSpacing: 1.5,
+    letterSpacing: 1.4,
     textTransform: "uppercase",
   },
   decision: {
-    color: "#2d2926",
+    color: COLORS.text,
     flex: 1,
-    fontSize: 18,
+    fontSize: 25,
     fontWeight: "900",
-    lineHeight: 22,
+    letterSpacing: 0,
+    lineHeight: 29,
   },
   decisionRow: {
     alignItems: "center",
@@ -1228,48 +1069,49 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bodyText: {
-    color: "#5a5249",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
-    paddingLeft: 50,
+    color: COLORS.textSoft,
+    fontSize: 17,
+    lineHeight: 25,
+    marginTop: 18,
+    paddingLeft: 56,
   },
   planStatRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 16,
+    borderTopColor: COLORS.line,
+    borderTopWidth: 1,
+    marginTop: 20,
   },
   planStat: {
-    backgroundColor: "#ffffff",
-    borderRadius: 15,
-    flex: 1,
-    minHeight: 55,
-    padding: 8,
+    alignItems: "center",
+    borderBottomColor: COLORS.line,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 48,
+    paddingVertical: 11,
   },
   planStatLabelRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 4,
+    flex: 1,
+    gap: 9,
   },
   planStatLabel: {
-    color: "#706860",
+    color: COLORS.textSoft,
     flex: 1,
-    fontSize: 9,
+    fontSize: 15,
     fontWeight: "700",
   },
   planStatValue: {
-    color: "#2d2926",
-    fontSize: 12,
+    color: COLORS.text,
+    fontSize: 16,
     fontWeight: "900",
-    marginTop: 5,
+    marginTop: 0,
   },
   planOutfit: {
-    borderTopColor: "rgba(93,133,109,0.16)",
-    borderTopWidth: 1,
-    marginHorizontal: -18,
-    marginTop: 16,
-    paddingHorizontal: 18,
-    paddingTop: 13,
+    marginHorizontal: -20,
+    marginTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 0,
   },
   outfitHeader: {
     alignItems: "center",
@@ -1279,55 +1121,35 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: "center",
-    backgroundColor: "#5c7a5f",
-    borderRadius: 14,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.panel,
     justifyContent: "center",
     marginTop: 14,
     minHeight: 50,
     paddingHorizontal: 16,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: COLORS.surface,
     fontSize: 15,
-    fontWeight: "800",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 7,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-  },
-  secondaryButtonText: {
-    color: "#5c7a5f",
-    fontSize: 13,
     fontWeight: "800",
   },
   iconButton: {
     alignItems: "center",
-    backgroundColor: "rgba(254,252,248,0.86)",
-    borderColor: "rgba(217,208,195,0.88)",
-    borderRadius: 22,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
     height: 44,
     justifyContent: "center",
-    shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     width: 44,
   },
   iconBadge: {
     alignItems: "center",
-    borderRadius: 15,
+    borderRadius: 16,
     borderWidth: 1,
     height: 42,
     justifyContent: "center",
@@ -1339,24 +1161,19 @@ const styles = StyleSheet.create({
     gap: 10,
     justifyContent: "space-between",
   },
-  cardHeaderRight: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
   cardLabel: {
-    color: "#8e867c",
-    fontSize: 10,
+    color: COLORS.textMuted,
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 2.5,
+    letterSpacing: 2.2,
     textTransform: "uppercase",
   },
   cardTitle: {
-    color: "#2d2926",
-    fontSize: 18,
+    color: COLORS.text,
+    fontSize: 24,
     fontWeight: "800",
-    lineHeight: 23,
-    marginTop: 5,
+    lineHeight: 29,
+    marginTop: 7,
   },
   inlineBadge: {
     borderRadius: 999,
@@ -1366,32 +1183,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 7,
   },
-  weatherCard: {
-    backgroundColor: "#fefcf8",
-    borderColor: "#e5ddd0",
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 18,
-    shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
-  },
   supportingGrid: {
     flexDirection: "row",
-    gap: 12,
+    gap: 14,
   },
   supportCard: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e8e4de",
-    borderRadius: 18,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.panel,
     borderWidth: 1,
     flex: 1,
-    minHeight: 178,
-    padding: 13,
-    shadowColor: "#2d2926",
+    minHeight: 190,
+    padding: 15,
+    shadowColor: COLORS.text,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
+    shadowOpacity: 0.018,
     shadowRadius: 10,
   },
   supportCardTop: {
@@ -1406,21 +1212,21 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   compactTemperatureValue: {
-    color: "#2d2926",
-    fontSize: 34,
+    color: COLORS.text,
+    fontSize: 44,
     fontWeight: "300",
-    lineHeight: 38,
+    lineHeight: 48,
   },
   compactTemperatureUnit: {
-    color: "#8e867c",
+    color: COLORS.textMuted,
     fontSize: 16,
     fontWeight: "700",
     paddingBottom: 5,
   },
   supportMuted: {
-    color: "#706860",
-    fontSize: 11,
-    lineHeight: 15,
+    color: COLORS.textSoft,
+    fontSize: 13,
+    lineHeight: 18,
     marginTop: 2,
   },
   supportList: {
@@ -1434,9 +1240,9 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   supportMetricText: {
-    color: "#5a5249",
+    color: COLORS.textSoft,
     flex: 1,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
   },
   supportBadge: {
@@ -1448,13 +1254,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   pollenMiniTitle: {
-    color: "#2d2926",
-    fontSize: 12,
+    color: COLORS.text,
+    fontSize: 13,
     fontWeight: "800",
   },
   pollenMiniValue: {
-    color: "#3b5240",
-    fontSize: 11,
+    color: COLORS.green,
+    fontSize: 12,
     fontWeight: "800",
   },
   editTriggersLink: {
@@ -1465,41 +1271,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   editTriggersText: {
-    color: "#8e867c",
-    fontSize: 11,
+    color: COLORS.textMuted,
+    fontSize: 12,
     fontWeight: "700",
-  },
-  weatherCardTop: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  temperatureRow: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 18,
-  },
-  temperatureValue: {
-    color: "#2d2926",
-    fontSize: 62,
-    fontWeight: "300",
-    letterSpacing: -1,
-    lineHeight: 66,
-  },
-  temperatureMeta: {
-    paddingBottom: 10,
-  },
-  temperatureUnit: {
-    color: "#8e867c",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  weatherStatsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 16,
   },
   triggerList: {
     gap: 10,
@@ -1510,9 +1284,9 @@ const styles = StyleSheet.create({
   },
   triggerRow: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderColor: "#e8e4de",
-    borderRadius: 18,
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.panel,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -1520,8 +1294,8 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   triggerRowActive: {
-    backgroundColor: "#e4ece4",
-    borderColor: "#c6d9c7",
+    backgroundColor: COLORS.greenSoft,
+    borderColor: "#c9ded3",
   },
   triggerText: {
     flex: 1,
@@ -1547,199 +1321,121 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   progressTrack: {
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     height: 7,
     overflow: "hidden",
   },
   progressFill: {
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
     height: "100%",
   },
   rowTitle: {
-    color: "#2d2926",
-    fontSize: 14,
+    color: COLORS.text,
+    fontSize: 16,
     fontWeight: "800",
   },
   mutedText: {
-    color: "#706860",
-    fontSize: 12,
-    lineHeight: 16,
+    color: COLORS.textSoft,
+    fontSize: 14,
+    lineHeight: 19,
     marginTop: 3,
-  },
-  clothingSection: {
-    marginTop: 18,
-  },
-  compactClothingSection: {
-    marginTop: 10,
-  },
-  compactSectionLabel: {
-    color: "#5c7a5f",
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  sectionHeaderRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    color: "#5c7a5f",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  clothingItem: {
-    alignItems: "flex-start",
-    backgroundColor: "#faf7f0",
-    borderColor: "#e5ddd0",
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 11,
-    marginTop: 8,
-    padding: 13,
   },
   compactClothingItem: {
     alignItems: "flex-start",
     flexDirection: "row",
-    gap: 10,
-    paddingVertical: 2,
-  },
-  primaryClothingItem: {
-    backgroundColor: "#f4f7f4",
-    borderColor: "#c6d9c7",
+    gap: 12,
+    paddingVertical: 7,
   },
   clothingText: {
     flex: 1,
   },
   priorityDot: {
-    backgroundColor: "#5c7a5f",
+    backgroundColor: COLORS.green,
     borderRadius: 5,
     height: 8,
     marginTop: 5,
     width: 8,
   },
   secondaryDot: {
-    backgroundColor: "#c97a45",
+    backgroundColor: COLORS.orange,
   },
-  forecastRow: {
+  forecastGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 14,
-    paddingRight: 6,
+    marginHorizontal: -6,
+    marginTop: 20,
   },
   forecastDay: {
-    borderRadius: 18,
-    borderWidth: 1,
-    minHeight: 112,
+    borderLeftColor: COLORS.line,
+    borderLeftWidth: 1,
+    flex: 1,
+    minHeight: 126,
     overflow: "hidden",
-    padding: 12,
-    width: 112,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  forecastDayActive: {
+    borderLeftWidth: 0,
   },
   forecastTopRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 9,
   },
   forecastDate: {
-    color: "#5a5249",
-    fontSize: 13,
+    color: COLORS.text,
+    fontSize: 14,
     fontWeight: "800",
   },
   forecastTemp: {
-    color: "#2d2926",
-    fontSize: 22,
+    color: COLORS.text,
+    fontSize: 27,
     fontWeight: "900",
-    marginTop: 8,
-  },
-  forecastWeather: {
-    color: "#706860",
-    fontSize: 11,
-    lineHeight: 15,
-    marginTop: 2,
+    marginTop: 10,
   },
   forecastRainRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 4,
-    marginTop: 8,
+    marginTop: 10,
   },
   forecastRainText: {
-    color: "#5a5249",
-    fontSize: 11,
+    color: COLORS.textSoft,
+    fontSize: 12,
     fontWeight: "800",
   },
-  forecastBadge: {
+  forecastRiskRow: {
     alignItems: "center",
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    borderWidth: 1,
-    marginTop: 8,
-    minWidth: 62,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  forecastBadgeText: {
-    fontSize: 11,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  settingsRow: {
-    alignItems: "center",
-    backgroundColor: "#fefcf8",
-    borderColor: "rgba(217,208,195,0.9)",
-    borderRadius: 22,
-    borderWidth: 1,
     flexDirection: "row",
-    gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  settingsIcon: {
-    alignItems: "center",
-    backgroundColor: "#e4ece4",
-    borderRadius: 15,
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  settingsCopy: {
-    flex: 1,
+    gap: 5,
+    marginTop: 8,
     minWidth: 0,
   },
-  settingsTitle: {
-    color: "#2d2926",
-    fontSize: 15,
-    fontWeight: "800",
+  forecastRiskDot: {
+    borderRadius: RADIUS.pill,
+    height: 10,
+    width: 10,
   },
-  settingsDetail: {
-    color: "#706860",
+  forecastBadgeText: {
+    flexShrink: 1,
     fontSize: 12,
-    marginTop: 3,
-  },
-  settingsAction: {
-    color: "#5c7a5f",
-    fontSize: 13,
-    fontWeight: "900",
+    fontWeight: "800",
+    minWidth: 0,
   },
   sectionCopy: {
-    color: "#706860",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 12,
+    color: COLORS.textSoft,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 14,
   },
   tabBar: {
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    borderTopColor: "#e8e8e8",
+    backgroundColor: COLORS.surface,
+    borderTopColor: COLORS.line,
     borderTopWidth: 1,
     flexDirection: "row",
-    height: 78,
+    height: 82,
     justifyContent: "space-around",
-    paddingBottom: 8,
-    paddingTop: 8,
+    paddingBottom: 10,
+    paddingTop: 9,
   },
   tabButton: {
     alignItems: "center",
@@ -1749,12 +1445,12 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   tabLabel: {
-    color: "#8a8a8a",
+    color: COLORS.textMuted,
     fontSize: 11,
     fontWeight: "700",
   },
   tabLabelActive: {
-    color: "#111111",
+    color: COLORS.text,
     fontWeight: "900",
   },
 });
