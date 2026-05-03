@@ -241,12 +241,6 @@ function formatLocationName(locationName: string) {
   return locationName;
 }
 
-function formatRailDay(date: string, index: number) {
-  if (index === 0) return "Today";
-  const parsed = new Date(`${date}T12:00:00Z`);
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(parsed);
-}
-
 function compassDirection(deg: number) {
   const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   return dirs[Math.round(deg / 45) % 8];
@@ -315,12 +309,12 @@ function getWeatherMood(weatherCode: number, isDay: number): {
   glow: string;
   accent: string;
 } {
-  if (isDay === 0) return { gradient: ["#f0ebe0", "#dfe7df"], glow: "#5a5249", accent: "#8e867c" };
-  if (weatherCode <= 1) return { gradient: ["#f7f4ef", "#fdf6f0"], glow: "#f4d0b5", accent: "#e09060" };
+  if (isDay === 0) return { gradient: ["#edf4ee", "#f7f1e8"], glow: "#5a5249", accent: "#8e867c" };
+  if (weatherCode <= 1) return { gradient: ["#edf4ee", "#fbf3e8"], glow: "#f4d0b5", accent: "#e09060" };
   if (weatherCode >= 45 && weatherCode <= 69) {
-    return { gradient: ["#f7f4ef", "#e8ece5"], glow: "#c6d9c7", accent: "#8e867c" };
+    return { gradient: ["#edf4ee", "#f5efe7"], glow: "#c6d9c7", accent: "#8e867c" };
   }
-  return { gradient: ["#f7f4ef", "#edf2ec"], glow: "#d6cbba", accent: "#5c7a5f" };
+  return { gradient: ["#edf4ee", "#f7f1e8"], glow: "#d6cbba", accent: "#5c7a5f" };
 }
 
 function AmbientBackground({
@@ -432,54 +426,6 @@ function PollenProgressRow({
       <View style={[styles.progressTrack, { backgroundColor: tone.track }]}>
         <View style={[styles.progressFill, { backgroundColor: tone.accent, width: `${tone.progress * 100}%` }]} />
       </View>
-    </View>
-  );
-}
-
-function WeekRail({ forecast, profile }: { forecast: DailyForecast[]; profile: AllergyProfile }) {
-  const days = forecast.slice(0, 5);
-  if (!days.length) return null;
-
-  return (
-    <View style={styles.weekRail}>
-      <View style={styles.weekRailHeader}>
-        <Text style={styles.weekRailTitle}>Next 5 days</Text>
-        <Text style={styles.weekRailSubhead}>Weather + pollen</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekRailScroller}>
-        {days.map((day, index) => {
-          const risk = getTriggerRisk(day, profile);
-          const tone = RISK_TONE[risk.level];
-          const isToday = index === 0;
-
-          return (
-            <View
-              key={day.date}
-              style={[
-                styles.weekDay,
-                isToday ? styles.weekDayActive : null,
-                index === days.length - 1 ? styles.weekDayLast : null,
-              ]}
-            >
-              <Text style={[styles.weekDayLabel, isToday ? styles.weekDayLabelActive : null]}>
-                {formatRailDay(day.date, index)}
-              </Text>
-              <Text style={styles.weekDayTemp}>{day.maxTemp}°</Text>
-              <WeatherIcon code={day.weatherCode} size={18} color="#c97a45" />
-              <View style={styles.weekDayMeta}>
-                <Droplets size={10} color="#706860" strokeWidth={2.2} />
-                <Text style={styles.weekDayMetaText}>{day.precipProbability}%</Text>
-              </View>
-              <View style={styles.weekDayPollen}>
-                <View style={[styles.weekDayDot, { backgroundColor: tone.accent }]} />
-                <Text style={[styles.weekDayPollenText, { color: tone.text }]} numberOfLines={1}>
-                  {risk.level}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-      </ScrollView>
     </View>
   );
 }
@@ -726,6 +672,10 @@ function ForecastStrip({
             <Text style={styles.forecastWeather} numberOfLines={1}>
               {getWeatherDescription(day.weatherCode)}
             </Text>
+            <View style={styles.forecastRainRow}>
+              <Droplets size={12} color="#706860" strokeWidth={2.2} />
+              <Text style={styles.forecastRainText}>{day.precipProbability}%</Text>
+            </View>
             <View style={[styles.forecastBadge, { backgroundColor: tone.background, borderColor: tone.border }]}>
               <Text style={[styles.forecastBadgeText, { color: tone.text }]}>{risk.level}</Text>
             </View>
@@ -893,8 +843,6 @@ export default function App() {
           </View>
         </View>
 
-        <WeekRail forecast={conditions.weeklyForecast ?? []} profile={profile} />
-
         {bannerCopy ? (
           <View style={styles.statusBanner}>
             <MapPin size={15} color="#854a28" strokeWidth={2.3} />
@@ -930,8 +878,8 @@ export default function App() {
             />
             <PlanStat
               icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
-              label={getWeatherDescription(conditions.weather.weatherCode)}
-              value={`${conditions.weather.temperature}°C`}
+              label="Feels"
+              value={`${conditions.weather.feelsLike}°C`}
             />
             <PlanStat
               icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
@@ -1007,29 +955,29 @@ const styles = StyleSheet.create({
   },
   ambientGlow: {
     borderRadius: 999,
-    opacity: 0.3,
+    opacity: 0.18,
     position: "absolute",
   },
   ambientGlowTop: {
-    height: 260,
-    left: -80,
-    top: -130,
-    width: 520,
+    height: 220,
+    left: -140,
+    top: -220,
+    width: 560,
   },
   ambientGlowSide: {
     height: 240,
-    opacity: 0.14,
+    opacity: 0.1,
     right: -130,
-    top: 260,
+    top: 330,
     width: 300,
   },
   leafMotif: {
-    opacity: 0.028,
+    opacity: 0.018,
     position: "absolute",
   },
   leafMotifOne: {
     right: -32,
-    top: 120,
+    top: 190,
     transform: [{ rotate: "28deg" }],
   },
   leafMotifTwo: {
@@ -1133,107 +1081,13 @@ const styles = StyleSheet.create({
     color: "#5a5249",
     fontSize: 15,
     fontWeight: "800",
-    marginTop: 1,
+    marginTop: 4,
   },
   updatedCaption: {
     color: "#8e867c",
     fontSize: 12,
     fontWeight: "600",
     marginTop: 5,
-  },
-  weekRail: {
-    backgroundColor: "#fbf7ef",
-    borderColor: "rgba(217,208,195,0.82)",
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: "hidden",
-    paddingTop: 14,
-  },
-  weekRailHeader: {
-    alignItems: "center",
-    borderBottomColor: "rgba(217,208,195,0.72)",
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingBottom: 11,
-  },
-  weekRailTitle: {
-    color: "#2d2926",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  weekRailSubhead: {
-    color: "#8e867c",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  weekRailScroller: {
-    paddingHorizontal: 8,
-    paddingVertical: 13,
-  },
-  weekDay: {
-    alignItems: "center",
-    borderColor: "rgba(217,208,195,0.7)",
-    borderRightWidth: 1,
-    gap: 7,
-    minHeight: 116,
-    paddingHorizontal: 13,
-    width: 76,
-  },
-  weekDayActive: {
-    backgroundColor: "rgba(254,252,248,0.72)",
-    borderRadius: 17,
-    borderRightWidth: 0,
-  },
-  weekDayLast: {
-    borderRightWidth: 0,
-  },
-  weekDayLabel: {
-    color: "#8e867c",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  weekDayLabelActive: {
-    color: "#2d2926",
-  },
-  weekDayCircle: {
-    alignItems: "center",
-    borderRadius: 17,
-    borderWidth: 2,
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  weekDayDot: {
-    borderRadius: 5,
-    height: 10,
-    width: 10,
-  },
-  weekDayTemp: {
-    color: "#2d2926",
-    fontSize: 22,
-    fontWeight: "900",
-    lineHeight: 25,
-  },
-  weekDayMeta: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 3,
-  },
-  weekDayMetaText: {
-    color: "#5a5249",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  weekDayPollen: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
-  weekDayPollenText: {
-    fontSize: 10,
-    fontWeight: "800",
   },
   onboardingTitle: {
     color: "#2d2926",
@@ -1777,6 +1631,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     marginTop: 2,
+  },
+  forecastRainRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+    marginTop: 8,
+  },
+  forecastRainText: {
+    color: "#5a5249",
+    fontSize: 11,
+    fontWeight: "800",
   },
   forecastBadge: {
     alignItems: "center",
