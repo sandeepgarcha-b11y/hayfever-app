@@ -732,39 +732,40 @@ export default function App() {
   const screenSubhead = activeTab === "profile" ? "Allergy settings" : formatToday();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.root}>
       <StatusBar style="dark" />
       <AmbientBackground />
-      <View style={styles.appShell}>
-        <ScrollView contentContainerStyle={styles.container}>
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.title}>{screenTitle}</Text>
-              <Text style={styles.dateText}>{screenSubhead}</Text>
-              <View style={styles.dateLocationRow}>
-                {activeTab === "profile" ? (
-                  <SlidersHorizontal size={12} color="#8e867c" strokeWidth={2.2} />
-                ) : (
-                  <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
-                )}
-                <Text style={styles.locationText} numberOfLines={1}>
-                  {activeTab === "profile" ? `Tracking ${trackedTriggers.join(", ")}` : formatLocationName(conditions.locationName)}
-                </Text>
-              </View>
-              {activeTab === "profile" ? null : <Text style={styles.updatedCaption}>{formatUpdated(conditions.fetchedAt)}</Text>}
-            </View>
-            {activeTab === "profile" ? null : (
-              <View style={styles.headerActions}>
-                <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
-                  {dataState === "loading" ? (
-                    <ActivityIndicator color="#5c7a5f" />
+      <SafeAreaView style={styles.contentSafeArea}>
+        <View style={styles.appShell}>
+          <ScrollView contentContainerStyle={styles.container}>
+            <View style={styles.header}>
+              <View style={styles.headerCopy}>
+                <Text style={styles.title}>{screenTitle}</Text>
+                <Text style={styles.dateText}>{screenSubhead}</Text>
+                <View style={styles.dateLocationRow}>
+                  {activeTab === "profile" ? (
+                    <SlidersHorizontal size={12} color="#8e867c" strokeWidth={2.2} />
                   ) : (
-                    <RefreshCw size={19} color="#5c7a5f" strokeWidth={2.4} />
+                    <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
                   )}
-                </Pressable>
+                  <Text style={styles.locationText} numberOfLines={1}>
+                    {activeTab === "profile" ? `Tracking ${trackedTriggers.join(", ")}` : formatLocationName(conditions.locationName)}
+                  </Text>
+                </View>
+                {activeTab === "profile" ? null : <Text style={styles.updatedCaption}>{formatUpdated(conditions.fetchedAt)}</Text>}
               </View>
-            )}
-          </View>
+              {activeTab === "profile" ? null : (
+                <View style={styles.headerActions}>
+                  <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
+                    {dataState === "loading" ? (
+                      <ActivityIndicator color="#5c7a5f" />
+                    ) : (
+                      <RefreshCw size={19} color="#5c7a5f" strokeWidth={2.4} />
+                    )}
+                  </Pressable>
+                </View>
+              )}
+            </View>
 
           {activeTab !== "profile" && bannerCopy ? (
             <View style={styles.statusBanner}>
@@ -900,16 +901,24 @@ export default function App() {
             </>
           ) : null}
         </ScrollView>
-        <BottomTabBar activeTab={activeTab} onChange={setActiveTab} />
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+      <BottomTabBar activeTab={activeTab} onChange={setActiveTab} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.canvas,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.canvas,
+  },
+  contentSafeArea: {
+    flex: 1,
   },
   appShell: {
     flex: 1,
@@ -1432,9 +1441,9 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.line,
     borderTopWidth: 1,
     flexDirection: "row",
-    height: 82,
+    height: 96,
     justifyContent: "space-around",
-    paddingBottom: 10,
+    paddingBottom: 24,
     paddingTop: 9,
   },
   tabButton: {
