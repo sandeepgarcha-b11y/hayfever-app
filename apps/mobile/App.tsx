@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   Cloud,
@@ -34,6 +35,7 @@ import {
   SlidersHorizontal,
   Sun,
   Umbrella,
+  UserRound,
   Wind,
   Zap,
 } from "lucide-react-native";
@@ -56,6 +58,7 @@ declare const process: {
 
 type DataState = "sample" | "loading" | "live" | "stale" | "permission" | "error";
 type TriggerKey = keyof AllergyProfile;
+type ActiveTab = "today" | "outlook" | "profile";
 
 const PROFILE_KEY = "hayfever.allergyProfile.v1";
 const PROFILE_COMPLETE_KEY = "hayfever.profileComplete.v1";
@@ -304,57 +307,10 @@ function WeatherIcon({ code, color = "#c97a45", size = 22 }: { code: number; col
   return <Zap size={size} color={color} strokeWidth={2.2} />;
 }
 
-function getWeatherMood(weatherCode: number, isDay: number): {
-  gradient: [string, string];
-  glow: string;
-  accent: string;
-} {
-  if (isDay === 0) return { gradient: ["#edf4ee", "#f7f1e8"], glow: "#5a5249", accent: "#8e867c" };
-  if (weatherCode <= 1) return { gradient: ["#edf4ee", "#fbf3e8"], glow: "#f4d0b5", accent: "#e09060" };
-  if (weatherCode >= 45 && weatherCode <= 69) {
-    return { gradient: ["#edf4ee", "#f5efe7"], glow: "#c6d9c7", accent: "#8e867c" };
-  }
-  return { gradient: ["#edf4ee", "#f7f1e8"], glow: "#d6cbba", accent: "#5c7a5f" };
-}
-
-function AmbientBackground({
-  weatherCode,
-  isDay,
-  highPollen,
-}: {
-  weatherCode: number;
-  isDay: number;
-  highPollen: boolean;
-}) {
-  const mood = getWeatherMood(weatherCode, isDay);
-
+function AmbientBackground() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <LinearGradient colors={mood.gradient} style={StyleSheet.absoluteFillObject} />
-      <View style={[styles.ambientGlow, styles.ambientGlowTop, { backgroundColor: mood.glow }]} />
-      <View style={[styles.ambientGlow, styles.ambientGlowSide, { backgroundColor: "#c6d9c7" }]} />
-      <View style={[styles.leafMotif, styles.leafMotifOne]}>
-        <Leaf size={120} color="#5c7a5f" strokeWidth={1.2} />
-      </View>
-      <View style={[styles.leafMotif, styles.leafMotifTwo]}>
-        <Leaf size={92} color={mood.accent} strokeWidth={1.2} />
-      </View>
-      {highPollen ? (
-        <View style={styles.pollenDust}>
-          {[0, 1, 2, 3, 4].map((dot) => (
-            <View
-              key={dot}
-              style={[
-                styles.pollenDot,
-                {
-                  left: `${12 + dot * 18}%`,
-                  top: dot % 2 === 0 ? 12 : 34,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      ) : null}
+      <LinearGradient colors={["#fbfaf7", "#f4f0ea"]} style={StyleSheet.absoluteFillObject} />
     </View>
   );
 }
@@ -510,33 +466,6 @@ function PollenSummaryCard({
   );
 }
 
-function SettingsRow({
-  profile,
-  expanded,
-  onPress,
-}: {
-  profile: AllergyProfile;
-  expanded: boolean;
-  onPress: () => void;
-}) {
-  const tracked = TRIGGER_COPY.filter((trigger) => profile[trigger.key]).map((trigger) => trigger.label);
-
-  return (
-    <Pressable style={styles.settingsRow} onPress={onPress}>
-      <View style={styles.settingsIcon}>
-        <SlidersHorizontal size={18} color="#5c7a5f" strokeWidth={2.4} />
-      </View>
-      <View style={styles.settingsCopy}>
-        <Text style={styles.settingsTitle}>Allergy profile</Text>
-        <Text style={styles.settingsDetail} numberOfLines={1}>
-          Tracking {tracked.join(", ")}
-        </Text>
-      </View>
-      <Text style={styles.settingsAction}>{expanded ? "Done" : "Edit"}</Text>
-    </Pressable>
-  );
-}
-
 function TriggerSelector({
   profile,
   values,
@@ -618,12 +547,18 @@ function ClothingSection({ title, items, compact = false }: { title: string; ite
 
   return (
     <View style={compact ? styles.compactClothingSection : styles.clothingSection}>
-      {compact && title === "Wear" ? null : <View style={styles.sectionHeaderRow}>
-        <IconBadge backgroundColor={isCarry ? "#faeade" : "#e4ece4"} borderColor={isCarry ? "#f4d0b5" : "#c6d9c7"}>
-          {icon}
-        </IconBadge>
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>}
+      {compact ? (
+        title === "Wear" ? null : (
+          <Text style={styles.compactSectionLabel}>{title}</Text>
+        )
+      ) : (
+        <View style={styles.sectionHeaderRow}>
+          <IconBadge backgroundColor={isCarry ? "#faeade" : "#e4ece4"} borderColor={isCarry ? "#f4d0b5" : "#c6d9c7"}>
+            {icon}
+          </IconBadge>
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+      )}
       {items.map((item) => (
         <View
           key={`${title}-${item.label}`}
@@ -686,11 +621,57 @@ function ForecastStrip({
   );
 }
 
+function BottomTabBar({
+  activeTab,
+  onChange,
+}: {
+  activeTab: ActiveTab;
+  onChange: (tab: ActiveTab) => void;
+}) {
+  const tabs: Array<{ key: ActiveTab; label: string; icon: (active: boolean) => ReactNode }> = [
+    {
+      key: "today",
+      label: "Today",
+      icon: (active) => <Leaf size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+    },
+    {
+      key: "outlook",
+      label: "Outlook",
+      icon: (active) => <CalendarDays size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+    },
+    {
+      key: "profile",
+      label: "Profile",
+      icon: (active) => <UserRound size={22} color={active ? "#111111" : "#8a8a8a"} strokeWidth={2.4} />,
+    },
+  ];
+
+  return (
+    <View style={styles.tabBar}>
+      {tabs.map((tab) => {
+        const active = tab.key === activeTab;
+        return (
+          <Pressable
+            key={tab.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(tab.key)}
+            style={styles.tabButton}
+          >
+            {tab.icon(active)}
+            <Text style={[styles.tabLabel, active ? styles.tabLabelActive : null]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function App() {
   const [conditions, setConditions] = useState<ConditionsResponse>(SAMPLE_CONDITIONS);
   const [profile, setProfile] = useState<AllergyProfile>(DEFAULT_PROFILE);
   const [profileReady, setProfileReady] = useState<boolean | null>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("today");
   const [dataState, setDataState] = useState<DataState>("sample");
   const hasLiveDataRef = useRef(false);
 
@@ -705,12 +686,10 @@ export default function App() {
         if (savedProfile) setProfile(normaliseProfile(JSON.parse(savedProfile) as Partial<AllergyProfile>));
         const ready = complete === "true" || Boolean(savedProfile);
         setProfileReady(ready);
-        setProfileOpen(!ready);
       })
       .catch(() => {
         if (!mounted) return;
         setProfileReady(false);
-        setProfileOpen(true);
       });
 
     return () => {
@@ -728,6 +707,10 @@ export default function App() {
   const clothingGroups = useMemo(
     () => groupClothing(personalisedRecommendation.clothing),
     [personalisedRecommendation.clothing]
+  );
+  const trackedTriggers = useMemo(
+    () => TRIGGER_COPY.filter((trigger) => profile[trigger.key]).map((trigger) => trigger.label),
+    [profile]
   );
   const bannerCopy = getBannerCopy(dataState);
 
@@ -789,7 +772,7 @@ export default function App() {
       [PROFILE_COMPLETE_KEY, "true"],
     ]);
     setProfileReady(true);
-    setProfileOpen(false);
+    setActiveTab("today");
   }, [profile]);
 
   if (profileReady === null) {
@@ -807,143 +790,178 @@ export default function App() {
     return <OnboardingScreen profile={profile} onToggle={toggleTrigger} onComplete={completeProfile} />;
   }
 
+  const screenTitle = activeTab === "today" ? "Today" : activeTab === "outlook" ? "Outlook" : "Profile";
+  const screenSubhead = activeTab === "profile" ? "Allergy settings" : formatToday();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      <AmbientBackground
-        weatherCode={conditions.weather.weatherCode}
-        isDay={conditions.weather.isDay}
-        highPollen={triggerRisk.index >= 3}
-      />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <View style={styles.brandRow}>
-              <Leaf size={14} color="#5c7a5f" strokeWidth={2.4} />
-              <Text style={styles.brand}>Hayfever</Text>
-            </View>
-            <Text style={styles.title}>Today</Text>
-            <Text style={styles.dateText}>{formatToday()}</Text>
-            <View style={styles.dateLocationRow}>
-              <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
-              <Text style={styles.locationText} numberOfLines={1}>
-                {formatLocationName(conditions.locationName)}
-              </Text>
-            </View>
-            <Text style={styles.updatedCaption}>{formatUpdated(conditions.fetchedAt)}</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
-              {dataState === "loading" ? (
-                <ActivityIndicator color="#5c7a5f" />
-              ) : (
-                <RefreshCw size={19} color="#5c7a5f" strokeWidth={2.4} />
-              )}
-            </Pressable>
-          </View>
-        </View>
-
-        {bannerCopy ? (
-          <View style={styles.statusBanner}>
-            <MapPin size={15} color="#854a28" strokeWidth={2.3} />
-            <Text style={styles.statusBannerText}>{bannerCopy}</Text>
-          </View>
-        ) : null}
-
-        <LinearGradient colors={riskTone.hero} style={[styles.heroCard, { borderColor: riskTone.border }]}>
-          <Text style={styles.cardLabel}>Today's plan</Text>
-          <View style={styles.planIntro}>
-            <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
-              <Pill size={23} color={riskTone.accent} strokeWidth={2.35} />
-            </IconBadge>
-            <View style={styles.planCopy}>
-              <View style={styles.decisionRow}>
-                <Text style={styles.decision}>
-                  {personalisedRecommendation.antihistamine ? "Take an antihistamine" : "No antihistamine needed"}
+      <AmbientBackground />
+      <View style={styles.appShell}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.header}>
+            <View style={styles.headerCopy}>
+              <View style={styles.brandRow}>
+                <Leaf size={14} color="#5c7a5f" strokeWidth={2.4} />
+                <Text style={styles.brand}>Hayfever</Text>
+              </View>
+              <Text style={styles.title}>{screenTitle}</Text>
+              <Text style={styles.dateText}>{screenSubhead}</Text>
+              <View style={styles.dateLocationRow}>
+                {activeTab === "profile" ? (
+                  <SlidersHorizontal size={12} color="#8e867c" strokeWidth={2.2} />
+                ) : (
+                  <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
+                )}
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {activeTab === "profile" ? `Tracking ${trackedTriggers.join(", ")}` : formatLocationName(conditions.locationName)}
                 </Text>
-                <CheckCircle2 size={16} color={riskTone.accent} strokeWidth={2.2} />
               </View>
-              <Text style={[styles.riskLabel, { color: riskTone.text }]}>
-                {triggerRisk.level === "None" ? "No trigger pollen" : `${triggerRisk.level} ${triggerRisk.dominant.label.toLowerCase()} pollen`}
-              </Text>
+              {activeTab === "profile" ? null : <Text style={styles.updatedCaption}>{formatUpdated(conditions.fetchedAt)}</Text>}
             </View>
-          </View>
-          <Text style={styles.bodyText}>{personalisedRecommendation.antihistamineReason}</Text>
-
-          <View style={styles.planStatRow}>
-            <PlanStat
-              icon={<Leaf size={15} color={riskTone.accent} strokeWidth={2.3} />}
-              label="Pollen"
-              value={triggerRisk.level}
-            />
-            <PlanStat
-              icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
-              label="Feels"
-              value={`${conditions.weather.feelsLike}°C`}
-            />
-            <PlanStat
-              icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
-              label="Rain"
-              value={`${conditions.weather.precipitationProbability}%`}
-            />
-            <PlanStat
-              icon={<Wind size={15} color="#706860" strokeWidth={2.3} />}
-              label="Wind"
-              value={`${conditions.weather.windSpeed}km/h`}
-            />
-          </View>
-
-          <View style={styles.planOutfit}>
-            <View style={styles.outfitHeader}>
-              <Shirt size={15} color="#8e867c" strokeWidth={2.3} />
-              <Text style={styles.cardLabel}>Wear</Text>
-            </View>
-            <ClothingSection title="Wear" items={clothingGroups.wear} compact />
-            <ClothingSection title="Carry" items={clothingGroups.carry} compact />
-            <ClothingSection title="Protect" items={clothingGroups.protect} compact />
-          </View>
-        </LinearGradient>
-
-        <View style={styles.supportingGrid}>
-          <WeatherSummaryCard conditions={conditions} />
-          <PollenSummaryCard
-            pollen={conditions.pollen}
-            profile={profile}
-            risk={triggerRisk}
-            onEdit={() => setProfileOpen((open) => !open)}
-          />
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardLabel}>5-day outlook</Text>
-              <Text style={styles.cardTitle}>Plan the week</Text>
-            </View>
-            <IconBadge backgroundColor="#faeade" borderColor="#f4d0b5">
-              <CloudSun size={18} color="#c97a45" strokeWidth={2.4} />
-            </IconBadge>
-          </View>
-          <ForecastStrip forecast={conditions.weeklyForecast ?? []} profile={profile} />
-        </View>
-
-        <SettingsRow profile={profile} expanded={profileOpen} onPress={() => setProfileOpen((open) => !open)} />
-
-        {profileOpen ? (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.cardLabel}>Allergy profile</Text>
-                <Text style={styles.cardTitle}>Relevant pollens only</Text>
+            {activeTab === "profile" ? null : (
+              <View style={styles.headerActions}>
+                <Pressable style={styles.iconButton} onPress={refresh} disabled={dataState === "loading"} accessibilityLabel="Refresh conditions">
+                  {dataState === "loading" ? (
+                    <ActivityIndicator color="#5c7a5f" />
+                  ) : (
+                    <RefreshCw size={19} color="#5c7a5f" strokeWidth={2.4} />
+                  )}
+                </Pressable>
               </View>
-              <IconBadge backgroundColor="#e4ece4" borderColor="#c6d9c7">
-                <SlidersHorizontal size={18} color="#5c7a5f" strokeWidth={2.4} />
-              </IconBadge>
-            </View>
-            <TriggerSelector profile={profile} values={conditions.pollen} onToggle={toggleTrigger} compact />
+            )}
           </View>
-        ) : null}
-      </ScrollView>
+
+          {activeTab !== "profile" && bannerCopy ? (
+            <View style={styles.statusBanner}>
+              <MapPin size={15} color="#854a28" strokeWidth={2.3} />
+              <Text style={styles.statusBannerText}>{bannerCopy}</Text>
+            </View>
+          ) : null}
+
+          {activeTab === "today" ? (
+            <LinearGradient colors={riskTone.hero} style={[styles.heroCard, { borderColor: riskTone.border }]}>
+              <Text style={styles.cardLabel}>Today's plan</Text>
+              <View style={styles.planIntro}>
+                <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
+                  <Pill size={23} color={riskTone.accent} strokeWidth={2.35} />
+                </IconBadge>
+                <View style={styles.planCopy}>
+                  <View style={styles.decisionRow}>
+                    <Text style={styles.decision}>
+                      {personalisedRecommendation.antihistamine ? "Take an antihistamine" : "No antihistamine needed"}
+                    </Text>
+                    <CheckCircle2 size={16} color={riskTone.accent} strokeWidth={2.2} />
+                  </View>
+                  <Text style={[styles.riskLabel, { color: riskTone.text }]}>
+                    {triggerRisk.level === "None" ? "No trigger pollen" : `${triggerRisk.level} ${triggerRisk.dominant.label.toLowerCase()} pollen`}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.bodyText}>{personalisedRecommendation.antihistamineReason}</Text>
+
+              <View style={styles.planStatRow}>
+                <PlanStat
+                  icon={<Leaf size={15} color={riskTone.accent} strokeWidth={2.3} />}
+                  label="Pollen"
+                  value={triggerRisk.level}
+                />
+                <PlanStat
+                  icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
+                  label="Feels"
+                  value={`${conditions.weather.feelsLike}°C`}
+                />
+                <PlanStat
+                  icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
+                  label="Rain"
+                  value={`${conditions.weather.precipitationProbability}%`}
+                />
+              </View>
+
+              <View style={styles.planOutfit}>
+                <View style={styles.outfitHeader}>
+                  <Shirt size={15} color="#8e867c" strokeWidth={2.3} />
+                  <Text style={styles.cardLabel}>Wear</Text>
+                </View>
+                <ClothingSection title="Wear" items={clothingGroups.wear} compact />
+                <ClothingSection title="Carry" items={clothingGroups.carry} compact />
+                <ClothingSection title="Protect" items={clothingGroups.protect} compact />
+              </View>
+            </LinearGradient>
+          ) : null}
+
+          {activeTab === "outlook" ? (
+            <>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.cardLabel}>5-day outlook</Text>
+                    <Text style={styles.cardTitle}>Plan the week</Text>
+                  </View>
+                  <IconBadge backgroundColor="#faeade" borderColor="#f4d0b5">
+                    <CloudSun size={18} color="#c97a45" strokeWidth={2.4} />
+                  </IconBadge>
+                </View>
+                <ForecastStrip forecast={conditions.weeklyForecast ?? []} profile={profile} />
+              </View>
+
+              <View style={styles.supportingGrid}>
+                <WeatherSummaryCard conditions={conditions} />
+                <PollenSummaryCard
+                  pollen={conditions.pollen}
+                  profile={profile}
+                  risk={triggerRisk}
+                  onEdit={() => setActiveTab("profile")}
+                />
+              </View>
+            </>
+          ) : null}
+
+          {activeTab === "profile" ? (
+            <>
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.cardLabel}>Allergy profile</Text>
+                    <Text style={styles.cardTitle}>Relevant pollens only</Text>
+                  </View>
+                  <IconBadge backgroundColor="#e4ece4" borderColor="#c6d9c7">
+                    <SlidersHorizontal size={18} color="#5c7a5f" strokeWidth={2.4} />
+                  </IconBadge>
+                </View>
+                <Text style={styles.sectionCopy}>
+                  Choose the pollens you react to. The daily plan ignores anything switched off.
+                </Text>
+                <TriggerSelector profile={profile} values={conditions.pollen} onToggle={toggleTrigger} compact />
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View>
+                    <Text style={styles.cardLabel}>Today</Text>
+                    <Text style={styles.cardTitle}>Tracked pollen</Text>
+                  </View>
+                  <IconBadge backgroundColor={riskTone.background} borderColor={riskTone.border}>
+                    <Leaf size={18} color={riskTone.accent} strokeWidth={2.4} />
+                  </IconBadge>
+                </View>
+                <View style={styles.pollenProgressList}>
+                  {TRIGGER_COPY.map((row) => (
+                    <PollenProgressRow
+                      key={row.key}
+                      label={row.label}
+                      detail={row.detail}
+                      value={getPollenValue(conditions.pollen, row.key)}
+                      tracked={profile[row.key]}
+                    />
+                  ))}
+                </View>
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+        <BottomTabBar activeTab={activeTab} onChange={setActiveTab} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -951,7 +969,10 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f4efe8",
+    backgroundColor: "#fbfaf7",
+  },
+  appShell: {
+    flex: 1,
   },
   ambientGlow: {
     borderRadius: 999,
@@ -1013,9 +1034,9 @@ const styles = StyleSheet.create({
     padding: 22,
   },
   container: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 42,
+    gap: 14,
+    padding: 18,
+    paddingBottom: 24,
   },
   header: {
     alignItems: "flex-start",
@@ -1103,15 +1124,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   card: {
-    backgroundColor: "#fefcf8",
-    borderColor: "rgba(217,208,195,0.9)",
-    borderRadius: 22,
+    backgroundColor: "#ffffff",
+    borderColor: "#e8e4de",
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     shadowColor: "#2d2926",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.03,
+    shadowRadius: 14,
   },
   heroCard: {
     borderRadius: 24,
@@ -1219,7 +1240,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   planStat: {
-    backgroundColor: "rgba(254,252,248,0.78)",
+    backgroundColor: "#ffffff",
     borderRadius: 15,
     flex: 1,
     minHeight: 55,
@@ -1361,8 +1382,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   supportCard: {
-    backgroundColor: "#ece7dc",
-    borderColor: "#e1d8ca",
+    backgroundColor: "#ffffff",
+    borderColor: "#e8e4de",
     borderRadius: 18,
     borderWidth: 1,
     flex: 1,
@@ -1489,9 +1510,9 @@ const styles = StyleSheet.create({
   },
   triggerRow: {
     alignItems: "center",
-    backgroundColor: "#faf7f0",
-    borderColor: "#e5ddd0",
-    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderColor: "#e8e4de",
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
@@ -1549,7 +1570,13 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   compactClothingSection: {
-    marginTop: 0,
+    marginTop: 10,
+  },
+  compactSectionLabel: {
+    color: "#5c7a5f",
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 8,
   },
   sectionHeaderRow: {
     alignItems: "center",
@@ -1695,6 +1722,39 @@ const styles = StyleSheet.create({
   settingsAction: {
     color: "#5c7a5f",
     fontSize: 13,
+    fontWeight: "900",
+  },
+  sectionCopy: {
+    color: "#706860",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 12,
+  },
+  tabBar: {
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderTopColor: "#e8e8e8",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    height: 78,
+    justifyContent: "space-around",
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  tabButton: {
+    alignItems: "center",
+    flex: 1,
+    gap: 4,
+    justifyContent: "center",
+    minHeight: 56,
+  },
+  tabLabel: {
+    color: "#8a8a8a",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  tabLabelActive: {
+    color: "#111111",
     fontWeight: "900",
   },
 });
