@@ -242,9 +242,18 @@ function formatToday() {
   }).format(new Date()).replace(",", "");
 }
 
+function formatTodaySubhead(locationName: string) {
+  return `${formatToday()} / ${formatLocationName(locationName)}`;
+}
+
 function formatLocationName(locationName: string) {
   if (/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(locationName.trim())) return "Current location";
   return locationName;
+}
+
+function formatDayInitial(date: string) {
+  const parsed = new Date(`${date}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short" }).format(parsed).slice(0, 1);
 }
 
 function compassDirection(deg: number) {
@@ -488,6 +497,45 @@ function PollenProgressRow({
       <View style={[styles.progressTrack, { backgroundColor: tone.track }]}>
         <View style={[styles.progressFill, { backgroundColor: tone.accent, width: `${tone.progress * 100}%` }]} />
       </View>
+    </View>
+  );
+}
+
+function WeekRail({ forecast, profile }: { forecast: DailyForecast[]; profile: AllergyProfile }) {
+  const days = forecast.slice(0, 5);
+  if (!days.length) return null;
+
+  return (
+    <View style={styles.weekRail}>
+      {days.map((day, index) => {
+        const risk = getTriggerRisk(day, profile);
+        const tone = RISK_TONE[risk.level];
+        const isToday = index === 0;
+
+        return (
+          <View key={day.date} style={styles.weekDay}>
+            <Text style={[styles.weekDayLabel, isToday ? styles.weekDayLabelActive : null]}>
+              {formatDayInitial(day.date)}
+            </Text>
+            <View
+              style={[
+                styles.weekDayCircle,
+                {
+                  backgroundColor: isToday ? "#2d2926" : "transparent",
+                  borderColor: isToday ? "#2d2926" : "#c7c1b7",
+                },
+              ]}
+            >
+              {isToday ? (
+                <CheckCircle2 size={15} color="#fefcf8" strokeWidth={2.5} />
+              ) : (
+                <View style={[styles.weekDayDot, { backgroundColor: tone.accent }]} />
+              )}
+            </View>
+            <Text style={styles.weekDayTemp}>{day.maxTemp}°</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -881,14 +929,12 @@ export default function App() {
               <Leaf size={14} color="#5c7a5f" strokeWidth={2.4} />
               <Text style={styles.brand}>Hayfever</Text>
             </View>
+            <Text style={styles.title}>Today</Text>
             <View style={styles.dateLocationRow}>
-              <Text style={styles.title}>{formatToday()}</Text>
-              <View style={styles.locationRow}>
-                <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
-                <Text style={styles.locationText} numberOfLines={1}>
-                  {formatLocationName(conditions.locationName)}
-                </Text>
-              </View>
+              <MapPin size={12} color="#8e867c" strokeWidth={2.2} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {formatTodaySubhead(conditions.locationName)}
+              </Text>
             </View>
             <Text style={styles.dateText}>{formatUpdated(conditions.fetchedAt)}</Text>
           </View>
@@ -902,6 +948,8 @@ export default function App() {
             </Pressable>
           </View>
         </View>
+
+        <WeekRail forecast={conditions.weeklyForecast ?? []} profile={profile} />
 
         {bannerCopy ? (
           <View style={styles.statusBanner}>
@@ -931,26 +979,26 @@ export default function App() {
           <Text style={styles.bodyText}>{personalisedRecommendation.antihistamineReason}</Text>
 
           <View style={styles.planStatRow}>
-              <PlanStat
-                icon={<Leaf size={15} color={riskTone.accent} strokeWidth={2.3} />}
-                label="Pollen"
-                value={triggerRisk.level}
-              />
-              <PlanStat
-                icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
-                label={getWeatherDescription(conditions.weather.weatherCode)}
-                value={`${conditions.weather.temperature}°C`}
-              />
-              <PlanStat
-                icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
-                label="Rain"
-                value={`${conditions.weather.precipitationProbability}%`}
-              />
-              <PlanStat
-                icon={<Wind size={15} color="#706860" strokeWidth={2.3} />}
-                label="Wind"
-                value={`${conditions.weather.windSpeed}km/h`}
-              />
+            <PlanStat
+              icon={<Leaf size={15} color={riskTone.accent} strokeWidth={2.3} />}
+              label="Pollen"
+              value={triggerRisk.level}
+            />
+            <PlanStat
+              icon={<CloudSun size={15} color="#c97a45" strokeWidth={2.3} />}
+              label={getWeatherDescription(conditions.weather.weatherCode)}
+              value={`${conditions.weather.temperature}°C`}
+            />
+            <PlanStat
+              icon={<Droplets size={15} color="#5c7a5f" strokeWidth={2.3} />}
+              label="Rain"
+              value={`${conditions.weather.precipitationProbability}%`}
+            />
+            <PlanStat
+              icon={<Wind size={15} color="#706860" strokeWidth={2.3} />}
+              label="Wind"
+              value={`${conditions.weather.windSpeed}km/h`}
+            />
           </View>
 
           <View style={styles.planOutfit}>
@@ -1082,7 +1130,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     justifyContent: "space-between",
-    paddingTop: 6,
+    paddingTop: 4,
   },
   headerCopy: {
     flex: 1,
@@ -1097,8 +1145,8 @@ const styles = StyleSheet.create({
   dateLocationRow: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
+    gap: 5,
+    marginTop: 3,
   },
   locationRow: {
     alignItems: "center",
@@ -1107,9 +1155,9 @@ const styles = StyleSheet.create({
   },
   locationText: {
     color: "#8e867c",
+    flex: 1,
     fontSize: 12,
     fontWeight: "600",
-    maxWidth: 120,
   },
   headerActions: {
     alignItems: "flex-end",
@@ -1124,15 +1172,58 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#2d2926",
-    fontSize: 17,
+    fontSize: 38,
     fontWeight: "900",
-    lineHeight: 21,
+    letterSpacing: -0.4,
+    lineHeight: 42,
   },
   dateText: {
     color: "#8e867c",
     fontSize: 12,
     fontWeight: "600",
-    marginTop: 4,
+    marginTop: 3,
+  },
+  weekRail: {
+    alignItems: "center",
+    backgroundColor: "rgba(254,252,248,0.56)",
+    borderColor: "rgba(229,221,208,0.72)",
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  weekDay: {
+    alignItems: "center",
+    gap: 5,
+    minWidth: 42,
+  },
+  weekDayLabel: {
+    color: "#8e867c",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  weekDayLabelActive: {
+    color: "#2d2926",
+  },
+  weekDayCircle: {
+    alignItems: "center",
+    borderRadius: 17,
+    borderWidth: 2,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  weekDayDot: {
+    borderRadius: 5,
+    height: 10,
+    width: 10,
+  },
+  weekDayTemp: {
+    color: "#706860",
+    fontSize: 10,
+    fontWeight: "800",
   },
   onboardingTitle: {
     color: "#2d2926",
